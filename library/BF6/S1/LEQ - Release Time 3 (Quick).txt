@@ -1,0 +1,1 @@
+Set Release Time to 3 in the LEQ Control Panel

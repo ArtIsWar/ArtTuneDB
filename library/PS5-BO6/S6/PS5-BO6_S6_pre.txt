@@ -1,0 +1,7 @@
+### HESUVI: PS5-BO6_S6.lnk
+### HESUVI_ALT: PS5-BO6_S6_v2.lnk (alternative HRIR)
+### STATUS: Ready for VST/EQ configuration
+### NOTES: Add your pre-HeSuVi processing chain below (VSTs, filters, etc.)
+### To use v2 HRIR: Change line 1 to "### HESUVI: PS5-BO6_S6_v2.lnk"
+# NO PRE STEPS CURRENTLY
+

@@ -1,0 +1,27 @@
+# Internal tooling
+dev-tools/
+.claude/
+
+# Build artifacts
+*.zip
+*.exe
+
+# Temp directories
+temp/
+tmp/
+
+# Log files
+*.log
+
+# OS files
+Thumbs.db
+Desktop.ini
+.DS_Store
+
+# Editor files
+*.suo
+*.user
+.vs/
+.vscode/
+*.swp
+*~
