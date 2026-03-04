@@ -1,0 +1,5 @@
+### HESUVI: BF6_S0.lnk
+### STATUS: Ready for VST/EQ configuration
+### NOTES: Add your pre-HeSuVi processing chain below (VSTs, filters, etc.)
+#NO CURRENT PRE STEPS
+
