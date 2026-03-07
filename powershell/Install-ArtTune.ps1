@@ -579,6 +579,7 @@ function Install-Winget {
     <#
     .SYNOPSIS
         Ensures winget is available, installing from GitHub if needed.
+        Non-fatal: warns and continues if all install methods fail.
     #>
     if (Get-Command winget -ErrorAction SilentlyContinue) {
         $null = Write-CenteredBlock @(@{ Text = 'winget: OK'; Color = 'Green' })
@@ -586,9 +587,13 @@ function Install-Winget {
     }
 
     $null = Write-CenteredBlock @(
-        @{ Text = 'winget (Windows Package Manager) is required to install components.'; Color = 'DarkGray' }
+        @{ Text = 'winget (Windows Package Manager) is required to install some components.'; Color = 'DarkGray' }
         @{ Text = 'winget: not found, installing...'; Color = 'Yellow' }
     )
+
+    # -- Attempt 1: Add-AppxProvisionedPackage (works on standard Windows) -----
+    $msixPath    = "$env:TEMP\Microsoft.DesktopAppInstaller.msixbundle"
+    $licensePath = "$env:TEMP\Microsoft.DesktopAppInstaller_License.xml"
 
     try {
         $release = Invoke-RestMethod "https://api.github.com/repos/microsoft/winget-cli/releases/latest"
@@ -599,46 +604,95 @@ function Install-Winget {
             throw "Could not find winget release assets on GitHub"
         }
 
-        $msixPath = "$env:TEMP\Microsoft.DesktopAppInstaller.msixbundle"
-        $licensePath = "$env:TEMP\Microsoft.DesktopAppInstaller_License.xml"
-
         Invoke-WebRequest -Uri $msixUrl -OutFile $msixPath -UseBasicParsing
         Invoke-WebRequest -Uri $licenseUrl -OutFile $licensePath -UseBasicParsing
 
         Add-AppxProvisionedPackage -Online -PackagePath $msixPath -LicensePath $licensePath -ErrorAction Stop | Out-Null
 
-        # Refresh PATH so winget is discoverable
         $env:Path = [System.Environment]::GetEnvironmentVariable("Path", "Machine") + ";" +
                     [System.Environment]::GetEnvironmentVariable("Path", "User")
 
-        # Clean up
         Remove-Item $msixPath, $licensePath -Force -ErrorAction SilentlyContinue
 
         if (Get-Command winget -ErrorAction SilentlyContinue) {
             $null = Write-CenteredBlock @(@{ Text = 'winget: installed successfully'; Color = 'Green' })
-        } else {
-            throw "winget installed but not found in PATH"
+            return
         }
+        throw "winget installed but not found in PATH"
     }
     catch {
+        $provisionError = $_
+        Remove-Item $msixPath, $licensePath -Force -ErrorAction SilentlyContinue
+    }
+
+    # -- Attempt 2: Add-AppxPackage with dependencies (LTSC / IoT / debloated) -
+    $null = Write-CenteredBlock @(
+        @{ Text = 'Provisioned install failed, trying Add-AppxPackage with dependencies...'; Color = 'Yellow' }
+    )
+
+    $vclibsPath  = "$env:TEMP\Microsoft.VCLibs.x64.14.00.Desktop.appx"
+    $nupkgPath   = "$env:TEMP\Microsoft.UI.Xaml.2.8.6.zip"
+    $extractDir  = "$env:TEMP\Microsoft.UI.Xaml"
+
+    try {
+        # Download the msixbundle if it wasn't already downloaded
+        if (-not (Test-Path $msixPath)) {
+            if (-not $msixUrl) {
+                $release = Invoke-RestMethod "https://api.github.com/repos/microsoft/winget-cli/releases/latest"
+                $msixUrl = ($release.assets | Where-Object { $_.name -match '\.msixbundle$' }).browser_download_url
+            }
+            if (-not $msixUrl) { throw "Could not find winget msixbundle on GitHub" }
+            Invoke-WebRequest -Uri $msixUrl -OutFile $msixPath -UseBasicParsing
+        }
+
+        # Download VCLibs
+        Invoke-WebRequest -Uri "https://aka.ms/Microsoft.VCLibs.x64.14.00.Desktop.appx" -OutFile $vclibsPath -UseBasicParsing
+
+        # Download UI.Xaml nupkg (it's a zip -- use .zip extension for Expand-Archive compat)
+        Invoke-WebRequest -Uri "https://www.nuget.org/api/v2/package/Microsoft.UI.Xaml/2.8.6" -OutFile $nupkgPath -UseBasicParsing
+
+        # Extract and find the x64 appx dynamically (internal paths shift between versions)
+        Expand-Archive $nupkgPath $extractDir -Force
+        $uixamlAppx = Get-ChildItem $extractDir -Recurse -Filter "Microsoft.UI.Xaml.2.8*.appx" |
+            Where-Object { $_.FullName -match 'x64' } | Select-Object -First 1
+
+        if (-not $uixamlAppx) {
+            throw "Could not find x64 UI.Xaml appx in NuGet package"
+        }
+
+        Add-AppxPackage -Path $msixPath -DependencyPath @($vclibsPath, $uixamlAppx.FullName) -ErrorAction Stop
+
+        $env:Path = [System.Environment]::GetEnvironmentVariable("Path", "Machine") + ";" +
+                    [System.Environment]::GetEnvironmentVariable("Path", "User")
+
+        if (Get-Command winget -ErrorAction SilentlyContinue) {
+            $null = Write-CenteredBlock @(@{ Text = 'winget: installed successfully'; Color = 'Green' })
+            return
+        }
+        throw "winget installed but not found in PATH"
+    }
+    catch {
+        # Both methods failed -- warn and continue (winget is only needed for Creative App)
         Write-Host ""
         $null = Write-CenteredBlock @(
-            @{ Text = 'ERROR: Failed to install winget automatically.'; Color = 'Red' }
-            @{ Text = ''; Color = 'Red' }
-            @{ Text = '[d] Open download page (https://aka.ms/getwingetpreview)'; Color = 'Yellow' }
-            @{ Text = 'Open the downloaded .msixbundle file to install, then re-run this script.'; Color = 'Red' }
-            @{ Text = ''; Color = 'Red' }
-            @{ Text = 'Press any other key to exit.'; Color = 'DarkGray' }
+            @{ Text = 'WARNING: Could not install winget automatically.'; Color = 'Yellow' }
+            @{ Text = 'Some optional components (Creative App) may need manual install.'; Color = 'DarkGray' }
+            @{ Text = ''; Color = 'DarkGray' }
+            @{ Text = '[d] Open winget download page'; Color = 'Yellow' }
+            @{ Text = 'Press any other key to continue without winget.'; Color = 'DarkGray' }
         )
         Write-Host ""
         $key = $Host.UI.RawUI.ReadKey('NoEcho,IncludeKeyDown').Character
         if ($key -eq 'd' -or $key -eq 'D') {
             Start-Process 'https://aka.ms/getwingetpreview'
             Write-Host ""
-            $null = Write-CenteredBlock @(@{ Text = 'Opened in browser. Re-run this script after installing.'; Color = 'Green' })
+            $null = Write-CenteredBlock @(@{ Text = 'Opened in browser.'; Color = 'Green' })
             Write-Host ""
         }
-        exit 1
+    }
+    finally {
+        Remove-Item $msixPath, $licensePath, $vclibsPath, $nupkgPath -Force -ErrorAction SilentlyContinue
+        Remove-Item $extractDir -Recurse -Force -ErrorAction SilentlyContinue
     }
 }
 
@@ -701,6 +755,55 @@ function Stop-AudioHoldingProcesses {
     $null = Write-Wait -Message "Waiting for Voicemeeter to exit" -Until {
         @(Get-Process -Name $vmNames -ErrorAction SilentlyContinue).Count -eq 0
     } -TimeoutSeconds 10
+    Start-Sleep -Milliseconds 500
+}
+
+function Stop-EAPOEcosystemProcesses {
+    <#
+    .SYNOPSIS
+        Stops Peace, HeSuVi, and E-APO GUI tools so their file locks
+        on E-APO DLLs are released before uninstall / folder deletion.
+    #>
+    $eapoPath = Join-Path $env:ProgramFiles "EqualizerAPO"
+
+    # Processes with unique names -- safe to kill by name alone
+    $safeNames = @('Peace', 'HeSuVi', 'Configurator', 'DeviceSelector')
+
+    $killed = @()
+
+    foreach ($name in $safeNames) {
+        $procs = @(Get-Process -Name $name -ErrorAction SilentlyContinue)
+        if ($procs.Count -gt 0) {
+            $procs | Stop-Process -Force -ErrorAction SilentlyContinue
+            $killed += $name
+        }
+    }
+
+    # Editor.exe is too generic to kill by name -- filter by E-APO path
+    $editorProcs = @(Get-Process -Name 'Editor' -ErrorAction SilentlyContinue |
+        Where-Object {
+            try { $_.Path -and $_.Path.StartsWith($eapoPath, [System.StringComparison]::OrdinalIgnoreCase) }
+            catch { $false }
+        })
+    if ($editorProcs.Count -gt 0) {
+        $editorProcs | Stop-Process -Force -ErrorAction SilentlyContinue
+        $killed += 'Editor'
+    }
+
+    if ($killed.Count -eq 0) { return }
+
+    Write-Host "$($script:BoxMargin)Stopped E-APO ecosystem processes: $($killed -join ', ')" -ForegroundColor DarkGray
+
+    $null = Write-Wait -Message "Waiting for E-APO ecosystem processes to exit" -Until {
+        $remaining = @(Get-Process -Name $safeNames -ErrorAction SilentlyContinue).Count
+        $remaining += @(Get-Process -Name 'Editor' -ErrorAction SilentlyContinue |
+            Where-Object {
+                try { $_.Path -and $_.Path.StartsWith($eapoPath, [System.StringComparison]::OrdinalIgnoreCase) }
+                catch { $false }
+            }).Count
+        $remaining -eq 0
+    } -TimeoutSeconds 10
+
     Start-Sleep -Milliseconds 500
 }
 
@@ -1454,6 +1557,7 @@ function Uninstall-ExistingEAPO {
     # can crash if a third-party driver (e.g. Elgato) corrupts shared state
     # during audio subsystem destabilization (AccessViolationException).
     Stop-Process -Name "LEQControlPanel" -Force -ErrorAction SilentlyContinue
+    Stop-EAPOEcosystemProcesses
 
     # Back up user data before destroying E-APO folder
     $libraryPath = Join-Path $eapoPath "config\ArtTuneDB\library"
@@ -1584,7 +1688,12 @@ function Uninstall-ExistingHiFiCable {
 
     # Clean up files and registry
     Write-Wait -Message "Cleaning up Hi-Fi Cable files and registry..." -Until {
-        $hifiFolders = @("C:\Program Files (x86)\VB\ASIOBridge", "C:\Program Files\VB\CABLEHiFi")
+        $hifiFolders = @(
+            "C:\Program Files (x86)\VB\ASIOBridge",
+            "C:\Program Files\VB\CABLEHiFi",
+            "C:\Program Files\VB\CABLE",
+            "C:\Program Files (x86)\VB\CABLE"
+        )
         foreach ($folder in $hifiFolders) {
             if (Test-Path $folder) { Remove-Item -Path $folder -Recurse -Force -ErrorAction SilentlyContinue }
         }
@@ -1605,6 +1714,99 @@ function Uninstall-ExistingHiFiCable {
         }
         $true
     } -TimeoutSeconds 10 | Out-Null
+
+    # Clean up empty parent VB directories (only if nothing else remains, e.g. Voicemeeter)
+    foreach ($vbParent in @("C:\Program Files\VB", "C:\Program Files (x86)\VB")) {
+        if ((Test-Path $vbParent) -and
+            @(Get-ChildItem -Path $vbParent -ErrorAction SilentlyContinue).Count -eq 0) {
+            Remove-Item -Path $vbParent -Force -ErrorAction SilentlyContinue
+        }
+    }
+
+    # -- Nuclear cleanup: purge Hi-Fi Cable driver packages from the driver store --
+    Write-Wait -Message "Purging Hi-Fi Cable from driver store..." -Until {
+        try {
+            $pnpRaw = & pnputil /enum-drivers 2>&1
+            # Split into per-driver blocks (separated by blank lines).
+            # Field names are localized, but oem*.inf and product strings are not.
+            $blockText = ""
+            foreach ($line in $pnpRaw) {
+                $trimmed = "$line".Trim()
+                if ($trimmed -eq '' -and $blockText.Length -gt 0) {
+                    if ($blockText -match '(oem\d+\.inf)') {
+                        $oemInf = $Matches[1]
+                        if ($blockText -match 'VB-Audio' -and
+                            $blockText -match '(?i)hifi|hi-fi|hfvaio|hfcable') {
+                            & pnputil /delete-driver $oemInf /force 2>&1 | Out-Null
+                        }
+                    }
+                    $blockText = ""
+                    continue
+                }
+                $blockText += " $trimmed"
+            }
+            # Handle last block (no trailing blank line)
+            if ($blockText.Length -gt 0 -and
+                $blockText -match '(oem\d+\.inf)') {
+                $oemInf = $Matches[1]
+                if ($blockText -match 'VB-Audio' -and
+                    $blockText -match '(?i)hifi|hi-fi|hfvaio|hfcable') {
+                    & pnputil /delete-driver $oemInf /force 2>&1 | Out-Null
+                }
+            }
+        } catch { } # Best-effort; pnputil errors are non-fatal
+        $true
+    } -TimeoutSeconds 15 | Out-Null
+
+    # -- Nuclear cleanup: remove phantom/ghost Hi-Fi Cable devices --
+    Write-Wait -Message "Removing phantom Hi-Fi Cable devices..." -Until {
+        try {
+            $hifiDevices = Get-PnpDevice -ErrorAction SilentlyContinue |
+                Where-Object {
+                    ($_.Status -eq 'Error' -or $_.Status -eq 'Unknown') -and
+                    ($_.FriendlyName -match 'Hi-?Fi' -or $_.FriendlyName -match 'HiFi') -and
+                    $_.FriendlyName -notmatch 'Voicemeeter'
+                }
+            foreach ($dev in $hifiDevices) {
+                & pnputil /remove-device $dev.InstanceId 2>&1 | Out-Null
+            }
+        } catch { } # Best-effort
+        $true
+    } -TimeoutSeconds 15 | Out-Null
+
+    # -- Nuclear cleanup: remove residual driver binaries from System32/SysWOW64 --
+    # Patterns are HiFi-Cable-specific; Voicemeeter uses vbaudio_vmvaio*/vbvmaux*
+    $hifiFilePatterns = @('vbaudio_hfvaio64*', 'vbaudio_hfcable*', 'vbhifi*')
+    $systemDirs = @(
+        (Join-Path $env:SystemRoot 'System32'),
+        (Join-Path $env:SystemRoot 'System32\drivers'),
+        (Join-Path $env:SystemRoot 'SysWOW64')
+    )
+    foreach ($dir in $systemDirs) {
+        foreach ($pattern in $hifiFilePatterns) {
+            Get-ChildItem -Path $dir -Filter $pattern -ErrorAction SilentlyContinue |
+                ForEach-Object { Remove-Item $_.FullName -Force -ErrorAction SilentlyContinue }
+        }
+    }
+
+    # -- Conditional: remove VB-Audio certificate if no other VB-Audio products remain --
+    $vmExe = Join-Path "${env:ProgramFiles(x86)}" "VB\Voicemeeter\voicemeeter.exe"
+    if (-not (Test-Path $vmExe)) {
+        try {
+            $thumbprint = '00859AAC6A54B8C1B3C139DE67846E64E7B82DB2'
+            $store = [System.Security.Cryptography.X509Certificates.X509Store]::new(
+                'TrustedPublisher', 'LocalMachine')
+            $store.Open('ReadWrite')
+            $certs = $store.Certificates.Find(
+                [System.Security.Cryptography.X509Certificates.X509FindType]::FindByThumbprint,
+                $thumbprint, $false)
+            foreach ($c in $certs) { $store.Remove($c) }
+            $store.Close()
+        } catch { } # Best-effort
+    }
+
+    # Let Windows reconcile the device tree so cleanup is visible immediately
+    & pnputil /scan-devices 2>&1 | Out-Null
 
     Write-Host "$($script:BoxMargin)Hi-Fi Cable uninstalled." -ForegroundColor Green
     return $true
@@ -1745,6 +1947,7 @@ function Invoke-FreshStart {
     # can crash if a third-party driver (e.g. Elgato) corrupts shared state
     # during audio subsystem destabilization (AccessViolationException).
     Stop-Process -Name "LEQControlPanel" -Force -ErrorAction SilentlyContinue
+    Stop-EAPOEcosystemProcesses
 
     # Detect what's installed before doing anything
     $hasEapo = Test-Path (Join-Path $env:ProgramFiles "EqualizerAPO")
@@ -1831,43 +2034,64 @@ function Install-VBAudioCertificate {
         Pre-trusts the VB-Audio driver signing certificate so Windows
         skips the driver installation confirmation dialog.
     #>
-    param(
-        [Parameter(Mandatory)]
-        [string]$InstallerDir
-    )
 
     try {
-        $catFile = Get-ChildItem -Path $InstallerDir -Filter '*.cat' -Recurse -ErrorAction SilentlyContinue |
-                   Select-Object -First 1
+        $thumbprint = '00859AAC6A54B8C1B3C139DE67846E64E7B82DB2'
 
-        if (-not $catFile) {
-            $catFile = Get-ChildItem -Path $InstallerDir -Filter '*.sys' -Recurse -ErrorAction SilentlyContinue |
-                       Select-Object -First 1
-        }
-
-        if (-not $catFile) { return $false }
-
-        $sig = Get-AuthenticodeSignature -FilePath $catFile.FullName
-        if (-not $sig.SignerCertificate) { return $false }
-
-        $store = [System.Security.Cryptography.X509Certificates.X509Store]::new('TrustedPublisher', 'LocalMachine')
+        # Check if already trusted
+        $store = [System.Security.Cryptography.X509Certificates.X509Store]::new(
+            'TrustedPublisher', 'LocalMachine')
         try {
             $store.Open('ReadOnly')
             $existing = $store.Certificates.Find(
                 [System.Security.Cryptography.X509Certificates.X509FindType]::FindByThumbprint,
-                $sig.SignerCertificate.Thumbprint,
-                $false
-            )
+                $thumbprint, $false)
             if ($existing.Count -gt 0) { return $true }
         }
         finally { $store.Close() }
 
-        $certBytes = $sig.SignerCertificate.Export(
-            [System.Security.Cryptography.X509Certificates.X509ContentType]::Cert
-        )
+        # VB-Audio driver signing certificate (CN=Vincent Burel, Digital ID Class 3)
+        # Extracted from vbaudio_hfvaio64_win7.sys -- public cert embedded in every
+        # copy of the Hi-Fi Cable / Voicemeeter driver package.
+        $certBase64 = 'MIIFijCCBHKgAwIBAgIQB6z1xadU2q9M1r0ddHkdWTANBgkqhki' +
+            'G9w0BAQUFADCBtDELMAkGA1UEBhMCVVMxFzAVBgNVBAoTDlZlcmlTaWduLC' +
+            'BJbmMuMR8wHQYDVQQLExZWZXJpU2lnbiBUcnVzdCBOZXR3b3JrMTswOQYDV' +
+            'QQLEzJUZXJtcyBvZiB1c2UgYXQgaHR0cHM6Ly93d3cudmVyaXNpZ24uY29' +
+            'tL3JwYSAoYykxMDEuMCwGA1UEAxMlVmVyaVNpZ24gQ2xhc3MgMyBDb2RlI' +
+            'FNpZ25pbmcgMjAxMCBDQTAeFw0xMzExMDIwMDAwMDBaFw0xNTAxMDEyMzU5' +
+            'NTlaMIHNMQswCQYDVQQGEwJGUjERMA8GA1UECBMIRG9yZG9nbmUxDjAMBgN' +
+            'VBAcTBUV5bWV0MSQwIgYDVQQKFBtObyBPcmdhbml6YXRpb24gQWZmaWxpYX' +
+            'Rpb24xPjA8BgNVBAsTNURpZ2l0YWwgSUQgQ2xhc3MgMyAtIE1pY3Jvc29md' +
+            'CBTb2Z0d2FyZSBWYWxpZGF0aW9uIHYyMR0wGwYDVQQLFBRJbmRpdmlkdWF' +
+            'sIERldmVsb3BlcjEWMBQGA1UEAxQNVmluY2VudCBCdXJlbDCCASIwDQYJKo' +
+            'ZIhvcNAQEBBQADggEPADCCAQoCggEBAOYiZUittitgZENWdXIYRoqi2HUKqYJ' +
+            'b2CA6gRGkJ5VPdv5qMUly6C8tLxlbomX/V3GyWUTN8ZojFU7RWODhVbXkAD' +
+            'kwh2eXP6CsmED2SEXFVE5+G5Hf/jFScYYw7wmGkgIQHiYPkWZLEY85Y1Etg' +
+            'HEB3rA+sT+cGAPr3X8QJZmdxME6s5SXb2hl9KkiuGpjQR8XEESmHUSft2Ip' +
+            'SOz91ocWZIn9k1s9wWph2q5hJjNMtd7IO7m5D7k1MYghzKnZpZGq9rLgDyd' +
+            'pnag9LdrR++pYx5WqNkbCqwXeE8PSYW8BvMNne8ZD4oVW4nUC6S6jcPvNe/' +
+            'JAUy/rLNmSBn1IQECAwEAAaOCAXswggF3MAkGA1UdEwQCMAAwDgYDVR0PAQH' +
+            '/BAQDAgeAMEAGA1UdHwQ5MDcwNaAzoDGGL2h0dHA6Ly9jc2MzLTIwMTAtY3' +
+            'JsLnZlcmlzaWduLmNvbS9DU0MzLTIwMTAuY3JsMEQGA1UdIAQ9MDswOQYLY' +
+            'IZIAYb4RQEHFwMwKjAoBggrBgEFBQcCARYcaHR0cHM6Ly93d3cudmVyaXNp' +
+            'Z24uY29tL3JwYTATBgNVHSUEDDAKBggrBgEFBQcDAzBxBggrBgEFBQcBAQR' +
+            'lMGMwJAYIKwYBBQUHMAGGGGh0dHA6Ly9vY3NwLnZlcmlzaWduLmNvbTA7Bg' +
+            'grBgEFBQcwAoYvaHR0cDovL2NzYzMtMjAxMC1haWEudmVyaXNpZ24uY29tL' +
+            '0NTQzMtMjAxMC5jZXIwHwYDVR0jBBgwFoAUz5mp6nsm9EvJjo/X8AUm7+PS' +
+            'p50wEQYJYIZIAYb4QgEBBAQDAgQQMBYGCisGAQQBgjcCARsECDAGAQEAAQH' +
+            '/MA0GCSqGSIb3DQEBBQUAA4IBAQADlID7V7ye/9ibIHcTo08u9XP/vbrkk7+G' +
+            't6k2gZjXLZEs2Q8Bv53sY1xSTmBg8HRZc1CuOR2G2cYSVD8S5NPPYx/6TES' +
+            'GuHMTGG2a31G8EHDLUgSRCZmpyfiJAC98iXrIuDWJ1zEXj8f0+cktENiayH2' +
+            'hrVgOlxAjvgZ7zpzg+T291f8wwXg2BXVRmXr6SNeLBNX5QsjzK3bsOkjGeE' +
+            'fu47CV2CWuAFQW1Yt9HuE64v6h96Z3zipddcg3vHqE81w7JTFrvU7D77iOEz' +
+            'ei8RxaUTLhrureghtB7UEymvU5T7PJivdZ51k81+hYBR0Y1JpIsF6YOUcrMe' +
+            'BCO5vjYn0Y'
+
+        $certBytes = [Convert]::FromBase64String($certBase64)
         $cert = [System.Security.Cryptography.X509Certificates.X509Certificate2]::new($certBytes)
 
-        $store = [System.Security.Cryptography.X509Certificates.X509Store]::new('TrustedPublisher', 'LocalMachine')
+        $store = [System.Security.Cryptography.X509Certificates.X509Store]::new(
+            'TrustedPublisher', 'LocalMachine')
         $store.Open('ReadWrite')
         $store.Add($cert)
         $store.Close()
@@ -1912,7 +2136,7 @@ function Install-HiFiCable {
     }
 
     # Pre-trust VB-Audio driver certificate (suppresses driver confirmation dialog)
-    $null = Install-VBAudioCertificate -InstallerDir $extractPath
+    $null = Install-VBAudioCertificate
 
     # Run silent install
     $proc = Start-Process -FilePath $setupExe.FullName -ArgumentList "-i -h" -PassThru -ErrorAction Stop
@@ -1952,6 +2176,9 @@ function Install-Voicemeeter {
         Write-Host "$($script:BoxMargin)ERROR: Voicemeeter setup exe not found in archive." -ForegroundColor Red
         return $false
     }
+
+    # Pre-trust VB-Audio driver certificate (suppresses driver confirmation dialog)
+    $null = Install-VBAudioCertificate
 
     # Run silent install
     $proc = Start-Process -FilePath $setupExe.FullName -ArgumentList "-i -h" -PassThru -ErrorAction Stop
@@ -2600,11 +2827,12 @@ function Rename-AudioEndpoints {
 function Install-CreativeApp {
     <#
     .SYNOPSIS
-        Installs the Creative App via winget for Sound Blaster device management.
+        Installs the Creative App for Sound Blaster device management.
+        Tries winget first, falls back to direct CDN download.
     #>
     Write-Host "$($script:BoxMargin)Installing Creative App..." -ForegroundColor Cyan
 
-    # Detection: check common install paths and winget registry
+    # Detection: check common install paths
     $paths = @(
         "$env:ProgramFiles\Creative\Creative App",
         "${env:ProgramFiles(x86)}\Creative\Creative App"
@@ -2616,12 +2844,6 @@ function Install-CreativeApp {
         return $true
     }
 
-    # Verify winget is available
-    if (-not (Get-Command winget -ErrorAction SilentlyContinue)) {
-        Write-Host "$($script:BoxMargin)WARNING: winget not found. Install Creative App manually from the Microsoft Store." -ForegroundColor Yellow
-        return $false
-    }
-
     # Kill existing processes before install
     foreach ($name in @("Creative.App", "CreativeApp")) {
         Get-Process -Name $name -ErrorAction SilentlyContinue | ForEach-Object {
@@ -2631,25 +2853,76 @@ function Install-CreativeApp {
         }
     }
 
-    $proc = Start-Process -FilePath "winget" `
-        -ArgumentList 'install --id "CreativeTechnology.CreativeApp" --silent --accept-package-agreements --accept-source-agreements' `
-        -PassThru -WindowStyle Hidden -ErrorAction Stop
+    # -- Tier 1: Try winget ------------------------------------------------
+    if (Get-Command winget -ErrorAction SilentlyContinue) {
+        try {
+            $proc = Start-Process -FilePath "winget" `
+                -ArgumentList 'install --id "CreativeTechnology.CreativeApp" --silent --accept-package-agreements --accept-source-agreements' `
+                -PassThru -WindowStyle Hidden -ErrorAction Stop
 
-    Write-Wait -Message "Installing Creative App via winget..." -Until { $proc.HasExited } -TimeoutSeconds 300 | Out-Null
+            Write-Wait -Message "Installing Creative App via winget..." -Until { $proc.HasExited } -TimeoutSeconds 300 | Out-Null
 
-    if (-not $proc.HasExited) {
-        Write-Host "$($script:BoxMargin)WARNING: Creative App install timed out." -ForegroundColor Yellow
-        try { $proc.Kill() } catch { } # Process may have already exited
-        return $false
+            if ($proc.HasExited -and $proc.ExitCode -eq 0) {
+                Write-Host "$($script:BoxMargin)Creative App installed." -ForegroundColor Green
+                return $true
+            }
+
+            if (-not $proc.HasExited) {
+                try { $proc.Kill() } catch { }
+                Write-Host "$($script:BoxMargin)winget install timed out, trying direct download..." -ForegroundColor Yellow
+            } else {
+                Write-Host "$($script:BoxMargin)winget install failed (exit code $($proc.ExitCode)), trying direct download..." -ForegroundColor Yellow
+            }
+        }
+        catch {
+            Write-Host "$($script:BoxMargin)winget install failed, trying direct download..." -ForegroundColor Yellow
+        }
+    } else {
+        Write-Host "$($script:BoxMargin)winget not available, trying direct download..." -ForegroundColor DarkGray
     }
 
-    if ($proc.ExitCode -ne 0) {
-        Write-Host "$($script:BoxMargin)WARNING: Creative App install returned exit code $($proc.ExitCode)." -ForegroundColor Yellow
+    # -- Tier 2: Direct download from Creative CDN -------------------------
+    $cdnUrl = "https://files.creative.com/creative/bin/apps/swureleases/win/creativeapp/release/CreativeAppSetup_1.24.00.00.exe"
+    $setupPath = Join-Path $script:TempPath "CreativeAppSetup.exe"
+
+    try {
+        Invoke-WebRequest -Uri $cdnUrl -OutFile $setupPath -UseBasicParsing
+
+        Unblock-File -LiteralPath $setupPath -ErrorAction SilentlyContinue
+        $proc = Start-Process -FilePath $setupPath -ArgumentList "/VERYSILENT /SUPPRESSMSGBOXES /NORESTART" -PassThru -ErrorAction Stop
+
+        Write-Wait -Message "Installing Creative App..." -Until { $proc.HasExited } -TimeoutSeconds 300 | Out-Null
+
+        if (-not $proc.HasExited) {
+            try { $proc.Kill() } catch { }
+            Write-Host "$($script:BoxMargin)WARNING: Creative App install timed out." -ForegroundColor Yellow
+            return $false
+        }
+
+        if ($proc.ExitCode -ne 0) {
+            Write-Host "$($script:BoxMargin)WARNING: Creative App install returned exit code $($proc.ExitCode)." -ForegroundColor Yellow
+            return $false
+        }
+
+        # Verify
+        $installed = $paths | Where-Object { Test-Path $_ } | Select-Object -First 1
+        if ($installed) {
+            Write-Host "$($script:BoxMargin)Creative App installed." -ForegroundColor Green
+            return $true
+        }
+
+        Write-Host "$($script:BoxMargin)WARNING: Creative App installer completed but app not detected." -ForegroundColor Yellow
         return $false
     }
-
-    Write-Host "$($script:BoxMargin)Creative App installed." -ForegroundColor Green
-    return $true
+    catch {
+        Write-Host "$($script:BoxMargin)WARNING: Creative App download failed." -ForegroundColor Yellow
+        Write-Host "$($script:BoxMargin)Opening Creative support page for manual install..." -ForegroundColor DarkGray
+        Start-Process 'https://support.creative.com/Products/ProductDetails.aspx?prodID=23705'
+        return $false
+    }
+    finally {
+        Remove-Item $setupPath -Force -ErrorAction SilentlyContinue
+    }
 }
 
 function Install-SoundControl {
@@ -3076,8 +3349,8 @@ try {
 # SIG # Begin signature block
 # MIIsZwYJKoZIhvcNAQcCoIIsWDCCLFQCAQExDzANBglghkgBZQMEAgEFADB5Bgor
 # BgEEAYI3AgEEoGswaTA0BgorBgEEAYI3AgEeMCYCAwEAAAQQH8w7YFlLCE63JNLG
-# KX7zUQIBAAIBAAIBAAIBAAIBADAxMA0GCWCGSAFlAwQCAQUABCCs99EJ3ujmyZTl
-# M6o6yFhenGhWUlsuhnxH63Oxx6P9dKCCJXYwggVvMIIEV6ADAgECAhBI/JO0YFWU
+# KX7zUQIBAAIBAAIBAAIBAAIBADAxMA0GCWCGSAFlAwQCAQUABCBfsTxHGYhRyJpH
+# +u5BmgAKw9y++9XWGIwYME8Ait078qCCJXYwggVvMIIEV6ADAgECAhBI/JO0YFWU
 # jTanyYqJ1pQWMA0GCSqGSIb3DQEBDAUAMHsxCzAJBgNVBAYTAkdCMRswGQYDVQQI
 # DBJHcmVhdGVyIE1hbmNoZXN0ZXIxEDAOBgNVBAcMB1NhbGZvcmQxGjAYBgNVBAoM
 # EUNvbW9kbyBDQSBMaW1pdGVkMSEwHwYDVQQDDBhBQUEgQ2VydGlmaWNhdGUgU2Vy
@@ -3282,33 +3555,33 @@ try {
 # Q29kZSBTaWduaW5nIENBIEVWIFIzNgIQU4YrScJSfkPEvu9qaUjyTTANBglghkgB
 # ZQMEAgEFAKCBhDAYBgorBgEEAYI3AgEMMQowCKACgAChAoAAMBkGCSqGSIb3DQEJ
 # AzEMBgorBgEEAYI3AgEEMBwGCisGAQQBgjcCAQsxDjAMBgorBgEEAYI3AgEVMC8G
-# CSqGSIb3DQEJBDEiBCDL9Py6n27o1CuSQ0p6Ts4hdAPiLcRNpLoNP8xH7t+33jAN
-# BgkqhkiG9w0BAQEFAASCAgAC1uLhjdnzSS8LMTbdbz/htLje1b2IGuncRMMxlI5o
-# xj4n0LNMua8+L+B4phQAtZ++I1n8vBu2E5qStEBq/l/PbTOyKARQJAnJ8p+rM0qI
-# C00DD2MECEPQD8SQr2jYo2X353LAfkrSSzOLmNjQL6Zz/B9ps3m8Lvr4MGVphggQ
-# PrLRiDIC+W8SUMH6z8tq0CiWzH10lsA/lnapndqidUY2SOc3QKL2pWDOfPOK/HdF
-# +PyPDOwn3I+m8zTN2MXY3W0kgFabvf19eqQ1Qf8HON+EEaFUsTUxxxRefPAcw+ny
-# vDcIZMLZfsVAQle3qYNj4mmfOsVZk/TUbrqvyNu/hTRCrv0fomQTmW3Qgz8SWk0G
-# EImHXtXVu/df7IlHy6zNNIu7NFw3HGIbAtDuqLS60Nc6XiNH+X62a1tCfEIZWbDY
-# FC08Bi2TkqEo8u3V4dlxZiU+BAX5Ati1LV8TQ7RrznBc4vDh51xHsxiWnY81NMJo
-# n+1jTlXT2FoxUFds2zXgfTJt866IoTrrjzzl5zQb1DtVmPR2NIPTIm1OdC7Ayufa
-# pp/ei1QYXqfIWbKUBX88pajiYT8AFOy4/eLtGkFTvi+azzwEy/qGTE+c+UYRHt06
-# l2fhwuWK34THCsmHiIrM8uzsNpp1leXyt4UhtGSpGzV94qhkFq8zd5MVRNH47q+h
-# f6GCAyYwggMiBgkqhkiG9w0BCQYxggMTMIIDDwIBATB9MGkxCzAJBgNVBAYTAlVT
+# CSqGSIb3DQEJBDEiBCCnJ+1cTb9R2zUC0SxA+50VqTL4Ty/NgSHU07xmCh1SojAN
+# BgkqhkiG9w0BAQEFAASCAgC7xTE6RQQ//i+DfwVKFWrc2txfzuaK+rmKd/QOw9ow
+# we95NY86f/6e++6aqk2Ui8TF7tIBye9vUZPHNY3ITM5/gxbWkreuDl2pUUzcKFki
+# eOXzBa76EmPGuroPoeo43dYLhcVQ3xxFy2vVquxehCBxOD88CLCdxT0QDaf0FQSu
+# sQG4s+33/UP/eJdubTyYlZWG3dW9ledT7vLLuoNwZbKnL15uDiz9tEN4c6SUd69S
+# FffXuApjjqdIu3ZTNA+OnRQDRVmjkl/K5gi7/v6hv7zQQM7+ju8MXxWGdTLANV9r
+# G//ghRYy4Pmt+mXXvhpOaf2XINvOesrVo03HmPVOQn1Igf876Pi59dc+8c5+PfLQ
+# ZRsuHNpn1xFrgj4GASD4XyKhf0avYcsn3R3GF6DmkxjmM+i8zBDf79aecsXLtu/j
+# XdexcbUFFLV5j+/cjdkUBfxTqxxakPLA+JNw0Y0Gz3zy14FJtTFZJ5rYe6KoNunD
+# qpelJdRcRwsPHMjemKznkU4uHR6x6i/ox2bNNWx2GMIYN2aDhTouUN8B+3C/bWYu
+# LRZRNvl43z2BO2Llt73luiCNjHcseyt4sHF+QgRHHYFZ072kAKpqh3bC9SIs75BN
+# rkDfbZh01dp7xeR6y3wSr7DYqKw6/RMaEt0UhXKGPmmjWk63qyT1UayPVFh0vTnX
+# gKGCAyYwggMiBgkqhkiG9w0BCQYxggMTMIIDDwIBATB9MGkxCzAJBgNVBAYTAlVT
 # MRcwFQYDVQQKEw5EaWdpQ2VydCwgSW5jLjFBMD8GA1UEAxM4RGlnaUNlcnQgVHJ1
 # c3RlZCBHNCBUaW1lU3RhbXBpbmcgUlNBNDA5NiBTSEEyNTYgMjAyNSBDQTECEAqA
 # 7xhLjfEFgtHEdqeVdGgwDQYJYIZIAWUDBAIBBQCgaTAYBgkqhkiG9w0BCQMxCwYJ
-# KoZIhvcNAQcBMBwGCSqGSIb3DQEJBTEPFw0yNjAzMDcxOTAxMDlaMC8GCSqGSIb3
-# DQEJBDEiBCAUEpERVXJ0XqHkwyX8tMq1d0yhC+2N+CAUOe5SdHfdoDANBgkqhkiG
-# 9w0BAQEFAASCAgC5WtAz5FBhYZINvvfumJXCg5iNbXfXri0xliGd4jJAYTPCT1TJ
-# l9u+OeG1rhiZhgBwKlqKwAVs5S89/TKuHj/E2IG9KYQ+atk/xD2HN4NcmMXI+9o2
-# qPwxPcgvhWcOkijAlCqrRndk7V/154BtuAFWpG1ka8lrGSsPKsDpzUw8Kup6w6GH
-# 0McsaiR8BLC2nU2wAUmikdxky37b2oumFdbEldvYS0LfAmOoqOK9X5+Y9VuV4D43
-# PB//9bExWRLzwrp4yHJPv4OP6rOOCGDM7OF5SwbBc+XFmuaa1uQM29M8JIqhNMpY
-# 5bpgOhJnM/NjjkFynHS2psOHjF0/1qJfJctL4dW5aFf8W8PwC+IWaqUAPaeI+CXt
-# bSqJ2RLXyuEdjgN4e7+N5wf7DrPVZmm4PG81FaxT/Qlcdfls2fW93v1IKdWczUfb
-# r1xu1hXD/8KI/WzlzjeHgdmK+tOOLftdEjmiqjGwG3vSC+fWtmMXURyBPDjRzbG6
-# 3P05LKwPVc2HFkzdOgbkCCaAuUMOZqR7v3F7k5XmqldoJVm57f/O8LU+5Almvrwk
-# CZee5p66bxdr/N95EZnBCto+xW81AuqNnaTzX3OuKpyeRpI2TFKoYesg3PyX4fNi
-# Woa16GPpXcobxkEPzr2Z5+qPABRpCeh9hGQ4Lhw2LdiM+LqSJ8NSNOFPfA==
+# KoZIhvcNAQcBMBwGCSqGSIb3DQEJBTEPFw0yNjAzMDgwMTQzNTZaMC8GCSqGSIb3
+# DQEJBDEiBCDfEkkRSwFkEJdIcZ2yucpQ+lJ8msnQ0nvP7Ew/qpOxbDANBgkqhkiG
+# 9w0BAQEFAASCAgC8djbidG9kmlutCFMSPZOHdfRk1hADNScyU33PmcNRnjMroPqy
+# NtdhgUVtN2juR8HtuBEnhITTy8IAQjhQqkuPMZ381l/mIwfI1WzZp0hVzDZesY4Q
+# uHGLgVWRpmu5p4PKxj34zN8ShKq2lKn4XQdJOxiqjiErXTnUkKNTrAiZnXAn5/Hh
+# gP3ySuuyxM9QTGq8zlCoLM+vkbJ/ujgUO6jnp5GPgvJSu9EIFKbFxd9Zj39lFgHE
+# 5ExAlkzQ04U44NfdXQNUJMXUHXiRSrdxIckb0SwdXF3juBAi9YbBPpWukbJwD0yg
+# 22VOhWFkzKhuhCenYc6KzBBfTJy5YFm4a9HEnrd6jxvVbwysUFLRHIn3K9eVfvjJ
+# 1wqwozLuHG776DEHODXyqyF+xhFgS1ueckt1wURf+z4ADdONkav1S0oVPqnmZ9dv
+# ikikbBgbNpw3AOZvTpSmYhQq9wv9x1rM5a3XydYdHCW8mf463wjFm/Cj1+46VCoZ
+# 9KXGRsW/x4cv0pyvP14Idgi7koOtiJ38JFA7/WzajAAZmtqxzRcCqDtofFw4Sxgy
+# XspgTiUxBcYhh/XCYwJMVDRddvq0gfT9Q9nXWT7C3A4oezYiHiRGQGphXHJ5AaeO
+# /ZT3/zYkxqAxagGBfl+f5cXYu4OFItnNsd6D9NgWOYI5OGSpfDhA3u5LCA==
 # SIG # End signature block
