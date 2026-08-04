@@ -1,7 +1,66 @@
-### New  2026.04.1
-- Adjusted BO7 S3 prehesuvi files and BO7 S3 Target to adjust for unintended boosts in the high end/treble. Users need to delete any existing S3 profiles and recreate them in the profile wizard!
+## 2026.07.1-Overhaul
 
-## 2026.04
-- BO7 Season 3 tune: rebuilt audio chain with custom JSFX plugins (ATK Spatial Engine, ATK Stereo Spatial Enhancer). Cleaner surround field, better footstep clarity, reduced gunfire fatigue.
-- Tune variations: multiple pre-HeSuVi config options for BO7 S3. Select a variation from the status bar or right-click a supported profile for a different audio flavor.
-- JSFX plugin delivery: custom plugins included in library and deployed automatically during setup, repair, and updates.
+- BO7 V5: Full and Balanced retuned. Full now lifts footsteps with combat
+  ducking off; Balanced keeps Full's footstep lift with combat control on,
+  sitting between Full and Competitive.
+- BO7 V5 target curve replaced: log-spaced points in place of the old
+  linear 2 Hz grid, with revised gains. Re-run your squig.link EQ against
+  the new target if you use V5.
+- Capped, Competitive and Immersive are unchanged.
+- All other games and versions are unchanged.
+
+## 2026.07-Overhaul
+
+- Library restructured: catalog-driven layout (catalog.json, game-configs,
+  Targets, hesuvi, vst, equalizer). Season folders retired.
+- Naming: seasons (S#) become versions (V#) across all games. Tunes are
+  not tied to game seasons and the names no longer pretend they are.
+- BO7 V4 added: native ATK Spatial Engine Bravo (8ch), EAC Refined HRIR
+  included at both sample rates.
+- BO7 V5 added: 16-channel spatial audio. 5 tunes x 4 self-gun levels
+  (20 configs). Binaural rendering happens in-plugin; no HeSuVi stage.
+- ATK Spatial Engine Bravo VST binaries included (v1.0.2, v2.0.0).
+  Proprietary, binary-only. See vst/LICENSE.
+- TargetOnly EQ now uses a flat target for all games (tuning logic
+  change). Per-game TargetOnly files retired.
+- STD flat baseline profile added.
+
+## 2026.06.95-V
+
+- BO7 Version 5 tuning styles have new names: Full (the standard tune, now the
+  default), Capped (Full with a soft peak ceiling), Immersive (the easy listen),
+  Balanced (the middle ground), and Competitive (maximum footstep detail).
+- Every V5 style now has a Self Gun Level: Low, Med, or High. Low keeps your own
+  gunfire quietest and is the default; High keeps more of your own gun in the mix
+  while still taming it. Switch levels from the dashboard, right beside the
+  tuning style.
+- Hover any tuning style in the picker to see what it sounds like and who it's for.
+- Existing V5 profiles fall back to the default style (Full) after this update -
+  re-pick your style once if you were on a different one.
+- The Self Gun Level picker and style descriptions need app 1.2.95. Older app
+  versions keep working and load every style at its Low gun level.
+
+## 2026.06.91-V
+
+- BO7 Version 5 now includes a selectable "V2" tuning variation (retuned 16ch ATK Spatial
+  Engine config). The original V5 tuning stays the default - pick "V2" in the variation menu.
+- LANDMARK: BO7 Version 5 - the first 16-channel release. The ATK Spatial Engine v2.0.0
+  runs the entire chain natively on the 16-channel Art Tune + path: one engine end to
+  end, replacing the old multi-stage stack.
+- V5 sounds close to stock - clean and natural - with enemy footsteps boosted and
+  everything that fights them pulled out of the way. Your own gunfire and your own
+  footsteps stay low, and 16 discrete channels give every sound its own place:
+  separation the 8-channel path can't reach.
+- Windows Loudness Equalization is gone from the chain entirely. The engine handles
+  loudness itself now - in parts, per channel and per band, and much faster - so a
+  loud event in one place no longer drags down a quiet footstep somewhere else. Less
+  pumping, less smear, more of the game's real dynamics.
+- Seasons are now Versions: S3 is now V3, S4 is now V4, and so on across the entire
+  library. Your existing profiles migrate automatically on update - nothing to remake,
+  nothing to rename.
+- To try V5: create a new BO7 V5 profile. No HRIR pick, no channel selector - the app
+  configures itself. V5 requires the Art Tune + output; if activation says it isn't
+  configured, re-run Setup once.
+- V4 and every earlier version keep working exactly as before on the 8-channel path.
+- Beta note: library updates during beta may reset custom or imported EQ files - back
+  yours up before updating. A permanent fix is in the pipeline.

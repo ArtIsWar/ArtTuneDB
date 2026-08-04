@@ -6,6 +6,9 @@ dev-tools/
 *.zip
 *.exe
 
+# library/version.txt is TRACKED. Build-ArtTuneDB.ps1 refreshes the stamp and
+# it ships in the release zip, so a clean clone can stage a release.
+
 # Temp directories
 temp/
 tmp/

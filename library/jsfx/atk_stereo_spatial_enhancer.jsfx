@@ -1,0 +1,697 @@
+desc:ATK Stereo Spatial Enhancer
+// Post-HeSuVi stereo imaging processor for competitive gaming headphone audio.
+// Enhances spatial cues from binaural HRIR output without destroying positioning.
+//
+// Signal Flow:
+//   Input L/R (post-HeSuVi binaural stereo)
+//     |
+//     [Decode to Mid/Side]
+//     |
+//     [Bass Mono: LR4 crossover on side channel, keep HP only]
+//     |
+//     [Crossfeed Reduction: peaking EQ cut on mid channel]
+//     |
+//     [Width: scale mid and side gains]
+//     |
+//     [Encode back to L/R]
+//     |
+//     [Output Gain -> Dry/Wet Mix]
+//     |
+//   Output L/R
+//
+// Memory Layout (flat heap, 1080 slots):
+//   0-4:      Bass mono LP coefficients (5: b0,b1,b2,a1,a2)
+//   5-9:      Bass mono HP coefficients (5)
+//   10-14:    Crossfeed peaking EQ coefficients (5)
+//   15-16:    Bass mono LP cascade stage 1 state (2)
+//   17-18:    Bass mono LP cascade stage 2 state (2)
+//   19-20:    Bass mono HP cascade stage 1 state (2)
+//   21-22:    Bass mono HP cascade stage 2 state (2)
+//   23-24:    Crossfeed peaking EQ state (2)
+//   25-52:    Slider bounding rects (7 sliders x 4: x,y,w,h)
+//   53:       Drag state (which slider is being dragged, 0=none)
+//   54:       Last mouse X (for shift+drag fine mode)
+//   55-1078:  Visualization ring buffer (512 pairs x 2)
+//   1079:     Visualization write index
+
+author:ArtIsWar LLC
+tags:stereo imaging spatial width crossfeed enhancer
+in_pin:left input
+in_pin:right input
+out_pin:left output
+out_pin:right output
+
+slider1:width=0<-100,100,1>-Stereo Width (%)
+slider2:bassMono=120<20,500,1>-Bass Mono Freq (Hz)
+slider3:xfeedReduce=0<0,12,0.1>-Crossfeed Reduce (dB)
+slider4:xfeedFreq=1500<200,6000,1>-Crossfeed Center (Hz)
+slider5:xfeedQ=1.0<0.3,4.0,0.01>-Crossfeed Q
+slider6:outGain=0<-12,12,0.1>-Output Gain (dB)
+slider7:mix=1<0,1,0.001>-Dry/Wet
+
+@init
+
+// Memory layout constants
+COEFF_LP = 0;
+COEFF_HP = 5;
+COEFF_PEAK = 10;
+STATE_LP1 = 15;
+STATE_LP2 = 17;
+STATE_HP1 = 19;
+STATE_HP2 = 21;
+STATE_PEAK = 23;
+SLIDER_RECTS = 25;
+DRAG_STATE = 53;
+LAST_MOUSE_X = 54;
+VIZ_BUFFER = 55;
+VIZ_SIZE = 512;
+VIZ_INDEX = 1079;
+MEM_SIZE = 1080;
+
+// Conversion constant: 20 / ln(10)
+DB_K = 20 / log(10);
+
+// Butterworth Q
+BW_Q = 0.7071067811865476;
+
+// Zero all memory
+memset(0, 0, MEM_SIZE);
+freembuf(MEM_SIZE);
+
+// Correlation meter state (global vars, outside heap)
+corr_ll = 0;
+corr_rr = 0;
+corr_lr = 0;
+corr_alpha = 0;
+
+// --- Helper functions ---
+
+// Compute 2nd-order Butterworth lowpass biquad coefficients
+// Stores normalized b0,b1,b2,a1,a2 at mem[offset..offset+4]
+function calc_biquad_lp(offset, freq)
+  local(w0, cw0, sw0, alpha, a0)
+(
+  w0 = 2 * $pi * freq / srate;
+  cw0 = cos(w0);
+  sw0 = sin(w0);
+  alpha = sw0 / (2 * BW_Q);
+  a0 = 1 + alpha;
+  offset[0] = (1 - cw0) / 2 / a0;       // b0
+  offset[1] = (1 - cw0) / a0;            // b1
+  offset[2] = (1 - cw0) / 2 / a0;       // b2
+  offset[3] = (-2 * cw0) / a0;           // a1
+  offset[4] = (1 - alpha) / a0;          // a2
+);
+
+// Compute 2nd-order Butterworth highpass biquad coefficients
+function calc_biquad_hp(offset, freq)
+  local(w0, cw0, sw0, alpha, a0)
+(
+  w0 = 2 * $pi * freq / srate;
+  cw0 = cos(w0);
+  sw0 = sin(w0);
+  alpha = sw0 / (2 * BW_Q);
+  a0 = 1 + alpha;
+  offset[0] = (1 + cw0) / 2 / a0;       // b0
+  offset[1] = -(1 + cw0) / a0;           // b1
+  offset[2] = (1 + cw0) / 2 / a0;       // b2
+  offset[3] = (-2 * cw0) / a0;           // a1
+  offset[4] = (1 - alpha) / a0;          // a2
+);
+
+// Compute peaking EQ biquad coefficients (Audio EQ Cookbook)
+function calc_biquad_peak(offset, freq, Q, gain_db)
+  local(w0, cw0, sw0, alpha, A, a0)
+(
+  A = exp(gain_db / (2 * DB_K));
+  w0 = 2 * $pi * freq / srate;
+  cw0 = cos(w0);
+  sw0 = sin(w0);
+  alpha = sw0 / (2 * Q);
+  a0 = 1 + alpha / A;
+  offset[0] = (1 + alpha * A) / a0;     // b0
+  offset[1] = (-2 * cw0) / a0;          // b1
+  offset[2] = (1 - alpha * A) / a0;     // b2
+  offset[3] = (-2 * cw0) / a0;          // a1
+  offset[4] = (1 - alpha / A) / a0;     // a2
+);
+
+// Process single biquad - Direct Form II Transposed
+// co = coefficient address (5 values), so = state address (2 values)
+function process_biquad(x, co, so)
+  local(y)
+(
+  y = co[0] * x + so[0];
+  so[0] = co[1] * x - co[3] * y + so[1];
+  so[1] = co[2] * x - co[4] * y;
+  y;
+);
+
+// Draw a horizontal slider track and fill. Labels/values drawn at call site.
+// is_bipolar: 0=unipolar (fill from left), 1=bipolar (fill from center)
+function draw_hslider(sx, sy, sw, sh, val, vmin, vmax, cr, cg, cb, slider_idx, is_bipolar)
+  local(sr, norm, fill_w, fill_x, center_x)
+(
+  // Store bounding rect for hit-testing
+  sr = SLIDER_RECTS + slider_idx * 4;
+  sr[0] = sx; sr[1] = sy; sr[2] = sw; sr[3] = sh;
+
+  // Track background
+  gfx_set(0.06, 0.06, 0.06, 1);
+  gfx_x = sx; gfx_y = sy;
+  gfx_rectto(sx + sw, sy + sh);
+
+  // Track border
+  gfx_set(0.2, 0.2, 0.2, 1);
+  gfx_line(sx, sy, sx + sw - 1, sy);
+  gfx_line(sx, sy + sh - 1, sx + sw - 1, sy + sh - 1);
+  gfx_line(sx, sy, sx, sy + sh - 1);
+  gfx_line(sx + sw - 1, sy, sx + sw - 1, sy + sh - 1);
+
+  // Normalized 0-1
+  norm = (val - vmin) / (vmax - vmin);
+
+  is_bipolar ? (
+    center_x = sx + sw * 0.5;
+    norm > 0.5 ? (
+      // Positive: band color
+      gfx_set(cr, cg, cb, 0.6);
+      fill_x = center_x;
+      fill_w = (norm - 0.5) * sw;
+      gfx_x = fill_x; gfx_y = sy + 1;
+      gfx_rectto(fill_x + fill_w, sy + sh - 1);
+    ) : norm < 0.5 ? (
+      // Negative: coral-red
+      gfx_set(0.85, 0.3, 0.25, 0.6);
+      fill_w = (0.5 - norm) * sw;
+      fill_x = center_x - fill_w;
+      gfx_x = fill_x; gfx_y = sy + 1;
+      gfx_rectto(center_x, sy + sh - 1);
+    );
+    // Center tick (zero point indicator)
+    gfx_set(1, 1, 1, 0.3);
+    gfx_line(center_x, sy, center_x, sy + sh - 1);
+  ) : (
+    // Unipolar: fill from left
+    fill_w = norm * sw;
+    gfx_set(cr, cg, cb, 0.6);
+    gfx_x = sx; gfx_y = sy + 1;
+    gfx_rectto(sx + fill_w, sy + sh - 1);
+  );
+);
+
+// --- Compute initial coefficients ---
+calc_biquad_lp(COEFF_LP, bassMono);
+calc_biquad_hp(COEFF_HP, bassMono);
+calc_biquad_peak(COEFF_PEAK, xfeedFreq, xfeedQ, -xfeedReduce);
+
+// Width gains
+side_gain = 1.0 + width / 100;
+mid_gain = 2.0 - side_gain;
+
+// Output gain
+out_gain_lin = exp(outGain / DB_K);
+
+@slider
+
+// Recompute bass mono crossover coefficients
+calc_biquad_lp(COEFF_LP, bassMono);
+calc_biquad_hp(COEFF_HP, bassMono);
+
+// Recompute crossfeed peaking EQ (negative gain = cut)
+calc_biquad_peak(COEFF_PEAK, xfeedFreq, xfeedQ, -xfeedReduce);
+
+// Width gains (constant loudness: mid_gain + side_gain = 2.0)
+side_gain = 1.0 + width / 100;
+mid_gain = 2.0 - side_gain;
+
+// Output gain
+out_gain_lin = exp(outGain / DB_K);
+
+@block
+
+// Correlation meter smoothing coefficient (~50ms time constant)
+corr_alpha = 1.0 - exp(-1.0 / (0.05 * srate));
+
+@sample
+
+// Save dry input
+dry_l = spl0;
+dry_r = spl1;
+
+// Decode to mid/side
+mid = (spl0 + spl1) * 0.5;
+side = (spl0 - spl1) * 0.5;
+
+// Bass mono: LR4 crossover on side channel
+// Compute LP (for phase coherence) then discard
+side_lp = process_biquad(side, COEFF_LP, STATE_LP1);
+side_lp = process_biquad(side_lp, COEFF_LP, STATE_LP2);
+// Compute HP and keep
+side_hp = process_biquad(side, COEFF_HP, STATE_HP1);
+side_hp = process_biquad(side_hp, COEFF_HP, STATE_HP2);
+side = side_hp;
+
+// Crossfeed reduction: peaking EQ cut on mid (only if reducing > 0)
+xfeedReduce > 0 ? (
+  mid = process_biquad(mid, COEFF_PEAK, STATE_PEAK);
+);
+
+// Width: scale mid and side
+mid *= mid_gain;
+side *= side_gain;
+
+// Encode back to L/R
+wet_l = mid + side;
+wet_r = mid - side;
+
+// Output gain
+wet_l *= out_gain_lin;
+wet_r *= out_gain_lin;
+
+// Dry/wet mix
+spl0 = dry_l * (1 - mix) + wet_l * mix;
+spl1 = dry_r * (1 - mix) + wet_r * mix;
+
+// Write to visualization ring buffer
+viz_idx = VIZ_INDEX[0];
+VIZ_BUFFER[viz_idx * 2] = spl0;
+VIZ_BUFFER[viz_idx * 2 + 1] = spl1;
+viz_idx += 1;
+viz_idx >= VIZ_SIZE ? viz_idx = 0;
+VIZ_INDEX[0] = viz_idx;
+
+// Update correlation meter smoothed products
+corr_ll += corr_alpha * (spl0 * spl0 - corr_ll);
+corr_rr += corr_alpha * (spl1 * spl1 - corr_rr);
+corr_lr += corr_alpha * (spl0 * spl1 - corr_lr);
+
+@gfx 600 400
+
+// === ATK Brand Palette ===
+bg_r = 0.08;  bg_g = 0.08;  bg_b = 0.09;
+card_r = 0.13; card_g = 0.13; card_b = 0.14;
+brd_v = 0.2;
+trk_v = 0.06;
+axis_v = 0.25;
+
+gold_r = 0.85; gold_g = 0.65; gold_b = 0.2;
+teal_r = 0.2;  teal_g = 0.75; teal_b = 0.6;
+coral_r = 0.85; coral_g = 0.3; coral_b = 0.25;
+gray_v = 0.5;
+
+// Fonts: 1=header(16 bold), 2=label(12)
+gfx_setfont(1, "Arial", 16, 'b');
+gfx_setfont(2, "Arial", 12);
+
+// === Layout ===
+lm = 15;
+rm = 15;
+draw_w = gfx_w - lm - rm;
+trk_h = 18;
+lbl_h = 14;
+sl_gap = 6;
+sl_pad = 8;
+
+// Visualization section
+viz_h = 180;
+viz_top = 10;
+viz_bot = viz_top + viz_h;
+
+// Correlation meter
+corr_h = 14;
+corr_top = viz_bot + 6;
+corr_bot = corr_top + corr_h;
+
+// Slider section
+ctrl_top = corr_bot + 12;
+
+// Row 1: 3 sliders
+row1_cols = 3;
+col_gap = 10;
+col_w1 = (draw_w - (row1_cols - 1) * col_gap) / row1_cols;
+sl_w1 = col_w1 - 2 * sl_pad;
+
+// Row 2: 4 sliders
+row2_cols = 4;
+col_w2 = (draw_w - (row2_cols - 1) * col_gap) / row2_cols;
+sl_w2 = col_w2 - 2 * sl_pad;
+
+hdr_h = 24;
+row_content_h = hdr_h + lbl_h + trk_h + sl_gap;
+row2_top = ctrl_top + row_content_h + 10;
+
+// === Clear background ===
+gfx_set(bg_r, bg_g, bg_b, 1);
+gfx_x = 0; gfx_y = 0;
+gfx_rectto(gfx_w, gfx_h);
+
+// ===========================================
+// === LISSAJOUS SCATTER PLOT ===
+// ===========================================
+
+// Card background
+gfx_set(card_r, card_g, card_b, 1);
+gfx_x = lm; gfx_y = viz_top;
+gfx_rectto(lm + draw_w, viz_bot);
+
+// Card border
+gfx_set(brd_v, brd_v, brd_v, 1);
+gfx_line(lm, viz_top, lm + draw_w - 1, viz_top);
+gfx_line(lm, viz_bot - 1, lm + draw_w - 1, viz_bot - 1);
+gfx_line(lm, viz_top, lm, viz_bot - 1);
+gfx_line(lm + draw_w - 1, viz_top, lm + draw_w - 1, viz_bot - 1);
+
+// Center of scatter plot
+cx = lm + draw_w * 0.5;
+cy = viz_top + viz_h * 0.5;
+
+// Axis crosshair lines
+gfx_set(axis_v, axis_v, axis_v, 1);
+gfx_line(lm + 1, cy, lm + draw_w - 2, cy);
+gfx_line(cx, viz_top + 1, cx, viz_bot - 2);
+
+// Scale factor for scatter (pixels per unit amplitude)
+viz_scale = viz_h * 0.35;
+
+// Draw scatter points from ring buffer
+wr_idx = VIZ_INDEX[0];
+i = 0;
+while (i < VIZ_SIZE) (
+  l = VIZ_BUFFER[i * 2];
+  r = VIZ_BUFFER[i * 2 + 1];
+
+  // Rotate 45 degrees: mid = X axis, side = Y axis
+  px = cx + (l + r) * viz_scale;
+  py = cy - (l - r) * viz_scale;
+
+  // Only draw if within bounds
+  px >= lm && px < lm + draw_w && py >= viz_top && py < viz_bot ? (
+    // Fade based on age (newest = bright, oldest = dim)
+    age = (wr_idx - i + VIZ_SIZE) % VIZ_SIZE;
+    alpha = 0.1 + (VIZ_SIZE - age) / VIZ_SIZE * 0.5;
+    gfx_set(gold_r, gold_g, gold_b, alpha);
+    gfx_x = px; gfx_y = py;
+    gfx_setpixel(gold_r, gold_g, gold_b);
+  );
+
+  i += 1;
+);
+
+// Labels on viz
+gfx_setfont(2);
+gfx_set(1, 1, 1, 0.3);
+gfx_x = cx + 4; gfx_y = viz_top + 3;
+gfx_drawstr("M");
+gfx_x = lm + 4; gfx_y = cy - 12;
+gfx_drawstr("S");
+
+// ===========================================
+// === CORRELATION METER ===
+// ===========================================
+
+// Track background
+gfx_set(trk_v, trk_v, trk_v, 1);
+gfx_x = lm; gfx_y = corr_top;
+gfx_rectto(lm + draw_w, corr_bot);
+
+// Track border
+gfx_set(brd_v, brd_v, brd_v, 1);
+gfx_line(lm, corr_top, lm + draw_w - 1, corr_top);
+gfx_line(lm, corr_bot - 1, lm + draw_w - 1, corr_bot - 1);
+gfx_line(lm, corr_top, lm, corr_bot - 1);
+gfx_line(lm + draw_w - 1, corr_top, lm + draw_w - 1, corr_bot - 1);
+
+// Compute correlation: -1 (out of phase) to +1 (mono/in phase)
+corr_denom = sqrt(corr_ll * corr_rr) + 1e-20;
+correlation = corr_lr / corr_denom;
+correlation = max(-1, min(1, correlation));
+
+// Map correlation to x position: -1 = left, 0 = center, +1 = right
+corr_center_x = lm + draw_w * 0.5;
+corr_px = lm + (correlation + 1) * 0.5 * draw_w;
+
+// Draw gradient fill from center to indicator
+correlation >= 0 ? (
+  // Positive: teal-green fading to gold
+  fill_left = corr_center_x;
+  fill_right = corr_px;
+  // Interpolate color based on correlation (0=teal, 1=teal)
+  gfx_set(teal_r, teal_g, teal_b, 0.5);
+  gfx_x = fill_left; gfx_y = corr_top + 1;
+  gfx_rectto(fill_right, corr_bot - 1);
+) : (
+  // Negative: gold fading to coral-red
+  fill_left = corr_px;
+  fill_right = corr_center_x;
+  abs_corr = abs(correlation);
+  // Interpolate: closer to -1 = more coral-red
+  mix_r = gold_r + abs_corr * (coral_r - gold_r);
+  mix_g = gold_g + abs_corr * (coral_g - gold_g);
+  mix_b = gold_b + abs_corr * (coral_b - gold_b);
+  gfx_set(mix_r, mix_g, mix_b, 0.5);
+  gfx_x = fill_left; gfx_y = corr_top + 1;
+  gfx_rectto(fill_right, corr_bot - 1);
+);
+
+// Center tick
+gfx_set(1, 1, 1, 0.3);
+gfx_line(corr_center_x, corr_top, corr_center_x, corr_bot - 1);
+
+// Value indicator (white line)
+gfx_set(1, 1, 1, 0.9);
+gfx_line(corr_px, corr_top, corr_px, corr_bot - 1);
+
+// Correlation labels
+gfx_setfont(2);
+gfx_set(1, 1, 1, 0.4);
+gfx_x = lm + 3; gfx_y = corr_top + 1;
+gfx_drawstr("-1");
+gfx_measurestr("+1", tw, th);
+gfx_x = lm + draw_w - tw - 3; gfx_y = corr_top + 1;
+gfx_drawstr("+1");
+// Center "Corr" label
+gfx_measurestr("Corr", tw, th);
+gfx_x = corr_center_x - tw * 0.5; gfx_y = corr_top + 1;
+gfx_drawstr("Corr");
+
+// ===========================================
+// === MOUSE HANDLING ===
+// ===========================================
+
+mouse_cap & 1 ? (
+  // Mouse pressed - try to start a drag
+  DRAG_STATE[0] == 0 ? (
+    si = 0;
+    while (si < 7 && DRAG_STATE[0] == 0) (
+      sr = SLIDER_RECTS + si * 4;
+      mouse_x >= sr[0] && mouse_x <= sr[0] + sr[2] &&
+      mouse_y >= sr[1] && mouse_y <= sr[1] + sr[3] ? (
+        DRAG_STATE[0] = si + 1;
+      );
+      si += 1;
+    );
+  );
+
+  // --- Slider drag ---
+  DRAG_STATE[0] > 0 ? (
+    si = DRAG_STATE[0] - 1;
+    sr = SLIDER_RECTS + si * 4;
+
+    (mouse_cap & 8) ? (
+      // Shift held: fine mode (delta-based, 1/10th speed)
+      fine_delta = (mouse_x - LAST_MOUSE_X[0]) * 0.1;
+      // Read current normalized value
+      si == 0 ? cur_norm = (width + 100) / 200 :
+      si == 1 ? cur_norm = (bassMono - 20) / 480 :
+      si == 2 ? cur_norm = xfeedReduce / 12 :
+      si == 3 ? cur_norm = (xfeedFreq - 200) / 5800 :
+      si == 4 ? cur_norm = (xfeedQ - 0.3) / 3.7 :
+      si == 5 ? cur_norm = (outGain + 12) / 24 :
+      si == 6 ? cur_norm = mix;
+      norm = max(0, min(1, cur_norm + fine_delta / sr[2]));
+    ) : (
+      // Normal drag: absolute position
+      norm = max(0, min(1, (mouse_x - sr[0]) / sr[2]));
+    );
+
+    // Map normalized value back to slider variable
+    si == 0 ? ( width       = -100 + norm * 200;       slider_automate(slider1); ) :
+    si == 1 ? ( bassMono    = 20 + norm * 480;          slider_automate(slider2); ) :
+    si == 2 ? ( xfeedReduce = norm * 12;                slider_automate(slider3); ) :
+    si == 3 ? ( xfeedFreq   = 200 + norm * 5800;        slider_automate(slider4); ) :
+    si == 4 ? ( xfeedQ      = 0.3 + norm * 3.7;         slider_automate(slider5); ) :
+    si == 5 ? ( outGain     = -12 + norm * 24;           slider_automate(slider6); ) :
+    si == 6 ? ( mix         = norm;                      slider_automate(slider7); );
+
+    // Recompute derived values
+    calc_biquad_lp(COEFF_LP, bassMono);
+    calc_biquad_hp(COEFF_HP, bassMono);
+    calc_biquad_peak(COEFF_PEAK, xfeedFreq, xfeedQ, -xfeedReduce);
+    side_gain = 1.0 + width / 100;
+    mid_gain = 2.0 - side_gain;
+    out_gain_lin = exp(outGain / DB_K);
+  );
+) : (
+  // Mouse released
+  DRAG_STATE[0] = 0;
+);
+
+// Store mouse_x for next frame (shift+drag fine mode)
+LAST_MOUSE_X[0] = mouse_x;
+
+// === MOUSE WHEEL NUDGE ===
+mouse_wheel != 0 ? (
+  mw_handled = 0;
+
+  si = 0;
+  while (si < 7 && mw_handled == 0) (
+    sr = SLIDER_RECTS + si * 4;
+    mouse_x >= sr[0] && mouse_x <= sr[0] + sr[2] &&
+    mouse_y >= sr[1] && mouse_y <= sr[1] + sr[3] ? (
+      // Step sizes: larger for frequency/gain, smaller for others
+      si == 0 ? mw_step = 1 :       // width: 1%
+      si == 1 ? mw_step = 5 :       // bass mono: 5 Hz
+      si == 2 ? mw_step = 0.1 :     // xfeed reduce: 0.1 dB
+      si == 3 ? mw_step = 50 :      // xfeed center: 50 Hz
+      si == 4 ? mw_step = 0.05 :    // xfeed Q: 0.05
+      si == 5 ? mw_step = 0.1 :     // output gain: 0.1 dB
+      si == 6 ? mw_step = 0.01;     // mix: 0.01
+
+      mouse_wheel < 0 ? mw_step = -mw_step;
+
+      si == 0 ? ( width       = max(-100, min(100, width + mw_step));            slider_automate(slider1); ) :
+      si == 1 ? ( bassMono    = max(20, min(500, bassMono + mw_step));           slider_automate(slider2); ) :
+      si == 2 ? ( xfeedReduce = max(0, min(12, xfeedReduce + mw_step));         slider_automate(slider3); ) :
+      si == 3 ? ( xfeedFreq   = max(200, min(6000, xfeedFreq + mw_step));       slider_automate(slider4); ) :
+      si == 4 ? ( xfeedQ      = max(0.3, min(4.0, xfeedQ + mw_step));           slider_automate(slider5); ) :
+      si == 5 ? ( outGain     = max(-12, min(12, outGain + mw_step));            slider_automate(slider6); ) :
+      si == 6 ? ( mix         = max(0, min(1, mix + mw_step));                   slider_automate(slider7); );
+
+      // Recompute derived values
+      calc_biquad_lp(COEFF_LP, bassMono);
+      calc_biquad_hp(COEFF_HP, bassMono);
+      calc_biquad_peak(COEFF_PEAK, xfeedFreq, xfeedQ, -xfeedReduce);
+      side_gain = 1.0 + width / 100;
+      mid_gain = 2.0 - side_gain;
+      out_gain_lin = exp(outGain / DB_K);
+
+      mw_handled = 1;
+    );
+    si += 1;
+  );
+
+  // Consume wheel event
+  mouse_wheel = 0;
+);
+
+// ===========================================
+// === SLIDER CONTROLS ===
+// ===========================================
+
+// --- Row 1: "Spatial" header ---
+gfx_setfont(1);
+gfx_set(gold_r, gold_g, gold_b, 0.95);
+gfx_x = lm; gfx_y = ctrl_top;
+gfx_drawstr("Spatial");
+
+cy = ctrl_top + hdr_h;
+gfx_setfont(2);
+
+// Slider 0: Stereo Width (bipolar, gold)
+sl_x = lm + sl_pad;
+gfx_set(1, 1, 1, 0.9);
+gfx_x = sl_x; gfx_y = cy;
+gfx_drawstr("Width");
+sprintf(0, "%+.0f%%", width);
+gfx_measurestr(0, tw, th);
+gfx_x = sl_x + sl_w1 - tw; gfx_y = cy;
+gfx_drawstr(0);
+cy += lbl_h;
+draw_hslider(sl_x, cy, sl_w1, trk_h, width, -100, 100, gold_r, gold_g, gold_b, 0, 1);
+
+// Slider 1: Bass Mono Freq (unipolar, gold)
+sl_x = lm + col_w1 + col_gap + sl_pad;
+cy = ctrl_top + hdr_h;
+gfx_set(1, 1, 1, 0.9);
+gfx_x = sl_x; gfx_y = cy;
+gfx_drawstr("Bass Mono");
+sprintf(0, "%.0f Hz", bassMono);
+gfx_measurestr(0, tw, th);
+gfx_x = sl_x + sl_w1 - tw; gfx_y = cy;
+gfx_drawstr(0);
+cy += lbl_h;
+draw_hslider(sl_x, cy, sl_w1, trk_h, bassMono, 20, 500, gold_r, gold_g, gold_b, 1, 0);
+
+// Slider 2: Crossfeed Reduce (unipolar, gold)
+sl_x = lm + (col_w1 + col_gap) * 2 + sl_pad;
+cy = ctrl_top + hdr_h;
+gfx_set(1, 1, 1, 0.9);
+gfx_x = sl_x; gfx_y = cy;
+gfx_drawstr("XFeed Cut");
+sprintf(0, "%.1f dB", xfeedReduce);
+gfx_measurestr(0, tw, th);
+gfx_x = sl_x + sl_w1 - tw; gfx_y = cy;
+gfx_drawstr(0);
+cy += lbl_h;
+draw_hslider(sl_x, cy, sl_w1, trk_h, xfeedReduce, 0, 12, gold_r, gold_g, gold_b, 2, 0);
+
+// --- Row 2: "Crossfeed / Master" header ---
+gfx_setfont(1);
+gfx_set(gray_v, gray_v, gray_v, 0.95);
+gfx_x = lm; gfx_y = row2_top;
+gfx_drawstr("Crossfeed / Master");
+
+cy = row2_top + hdr_h;
+gfx_setfont(2);
+
+// Slider 3: Crossfeed Center (unipolar, gold)
+sl_x = lm + sl_pad;
+gfx_set(1, 1, 1, 0.9);
+gfx_x = sl_x; gfx_y = cy;
+gfx_drawstr("XFeed Freq");
+sprintf(0, "%.0f Hz", xfeedFreq);
+gfx_measurestr(0, tw, th);
+gfx_x = sl_x + sl_w2 - tw; gfx_y = cy;
+gfx_drawstr(0);
+cy += lbl_h;
+draw_hslider(sl_x, cy, sl_w2, trk_h, xfeedFreq, 200, 6000, gold_r, gold_g, gold_b, 3, 0);
+
+// Slider 4: Crossfeed Q (unipolar, gold)
+sl_x = lm + col_w2 + col_gap + sl_pad;
+cy = row2_top + hdr_h;
+gfx_set(1, 1, 1, 0.9);
+gfx_x = sl_x; gfx_y = cy;
+gfx_drawstr("XFeed Q");
+sprintf(0, "%.2f", xfeedQ);
+gfx_measurestr(0, tw, th);
+gfx_x = sl_x + sl_w2 - tw; gfx_y = cy;
+gfx_drawstr(0);
+cy += lbl_h;
+draw_hslider(sl_x, cy, sl_w2, trk_h, xfeedQ, 0.3, 4.0, gold_r, gold_g, gold_b, 4, 0);
+
+// Slider 5: Output Gain (bipolar, gray)
+sl_x = lm + (col_w2 + col_gap) * 2 + sl_pad;
+cy = row2_top + hdr_h;
+gfx_set(1, 1, 1, 0.9);
+gfx_x = sl_x; gfx_y = cy;
+gfx_drawstr("Out Gain");
+sprintf(0, "%+.1f dB", outGain);
+gfx_measurestr(0, tw, th);
+gfx_x = sl_x + sl_w2 - tw; gfx_y = cy;
+gfx_drawstr(0);
+cy += lbl_h;
+draw_hslider(sl_x, cy, sl_w2, trk_h, outGain, -12, 12, gray_v, gray_v, gray_v, 5, 1);
+
+// Slider 6: Dry/Wet (unipolar, gray)
+sl_x = lm + (col_w2 + col_gap) * 3 + sl_pad;
+cy = row2_top + hdr_h;
+gfx_set(1, 1, 1, 0.9);
+gfx_x = sl_x; gfx_y = cy;
+gfx_drawstr("Dry/Wet");
+sprintf(0, "%.0f%%", mix * 100);
+gfx_measurestr(0, tw, th);
+gfx_x = sl_x + sl_w2 - tw; gfx_y = cy;
+gfx_drawstr(0);
+cy += lbl_h;
+draw_hslider(sl_x, cy, sl_w2, trk_h, mix, 0, 1, gray_v, gray_v, gray_v, 6, 0);

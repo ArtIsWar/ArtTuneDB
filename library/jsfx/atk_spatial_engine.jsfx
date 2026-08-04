@@ -1,0 +1,1844 @@
+desc:ATK Spatial Engine
+// Merged Spatial Intelligence + Spatial Dynamics
+// FC self-suppression, center duck, adaptive EQ,
+// CMR, self-suppress, front/surround transient shaping,
+// directional emphasis, downward expansion.
+// Core algorithm: Saike's Transience by Joep Vanlier
+// Implementation: ArtIsWar LLC
+
+author:ArtIsWar LLC
+tags:dynamics spatial transient shaper multiband
+in_pin:input 1
+in_pin:input 2
+in_pin:input 3
+in_pin:input 4
+in_pin:input 5
+in_pin:input 6
+in_pin:input 7
+in_pin:input 8
+out_pin:output 1
+out_pin:output 2
+out_pin:output 3
+out_pin:output 4
+out_pin:output 5
+out_pin:output 6
+out_pin:output 7
+out_pin:output 8
+
+// --- Crossover (4) ---
+slider1:lowCut=80<20,2000,1>-Low Cut
+slider2:highCut=16000<1000,20000,1>-High Cut
+slider3:xover1=800<20,8000,1>-Split Low/Mid
+slider4:xover2=3000<100,20000,1>-Split Mid/High
+
+// --- FC Self-Suppression (3) ---
+slider5:ckSubLow=0.0<0.0,5.0,0.01>-FC Sub Low
+slider6:ckSubMid=0.70<0.0,5.0,0.01>-FC Sub Mid
+slider7:ckSubHigh=0.55<0.0,5.0,0.01>-FC Sub High
+
+// --- Self Sound Gate (5) ---
+slider8:ckDuck=-30<-60,0,0.5>-Gate Depth (dB)
+slider9:ckThresh=-40<-60,0,0.5>-Gate Threshold (dBFS)
+slider10:ckAttack=1.0<0.1,50,0.1>-Gate Attack (ms)
+slider11:ckRelease=80<10,500,1>-Gate Release (ms)
+slider12:ckKnee=6<0,20,0.5>-Gate Knee (dB)
+
+// --- Adaptive EQ (9) ---
+slider13:boostLow=3.0<0,12,0.5>-AEQ Low Gain (dB)
+slider14:boostLowFreq=300<100,800,10>-AEQ Low Freq (Hz)
+slider15:boostLowQ=1.0<0.3,3.0,0.1>-AEQ Low Q
+slider16:boostHigh=6.0<0,18,0.5>-AEQ High Gain (dB)
+slider17:boostHighFreq=2500<1000,5000,100>-AEQ High Freq (Hz)
+slider18:boostHighQ=1.0<0.3,3.0,0.1>-AEQ High Q
+slider19:boostAttack=1.0<0.5,50,0.5>-AEQ Attack (ms)
+slider20:boostRelease=80<10,500,1>-AEQ Release (ms)
+slider21:boostRejectThresh=-20<-40,0,0.5>-AEQ Loudness Gate (dBFS)
+
+// --- Band 1 Low (6) ---
+slider22:b1Attack=0.5<0,1,0.001>-Low: Attack Speed
+slider23:b1Sustain=0.5<0,1,0.001>-Low: Sustain Speed
+slider24:b1AtkStr=0<-1,1,0.001>-Surr Low: Attack
+slider25:b1SusStr=0<-1,1,0.001>-Surr Low: Sustain
+slider26:fb1AtkStr=0<-1,1,0.001>-Front Low: Attack
+slider27:fb1SusStr=0<-1,1,0.001>-Front Low: Sustain
+
+// --- Band 2 Mid (6) ---
+slider28:b2Attack=0.5<0,1,0.001>-Mid: Attack Speed
+slider29:b2Sustain=0.5<0,1,0.001>-Mid: Sustain Speed
+slider30:b2AtkStr=0<-1,1,0.001>-Surr Mid: Attack
+slider31:b2SusStr=0<-1,1,0.001>-Surr Mid: Sustain
+slider32:fb2AtkStr=0<-1,1,0.001>-Front Mid: Attack
+slider33:fb2SusStr=0<-1,1,0.001>-Front Mid: Sustain
+
+// --- Band 3 High (6) ---
+slider34:b3Attack=0.5<0,1,0.001>-High: Attack Speed
+slider35:b3Sustain=0.5<0,1,0.001>-High: Sustain Speed
+slider36:b3AtkStr=0<-1,1,0.001>-Surr High: Attack
+slider37:b3SusStr=0<-1,1,0.001>-Surr High: Sustain
+slider38:fb3AtkStr=0<-1,1,0.001>-Front High: Attack
+slider39:fb3SusStr=0<-1,1,0.001>-Front High: Sustain
+
+// --- Expansion (9) ---
+slider40:b1ExpThresh=-40<-60,0,0.5>-Low: Expand Thresh
+slider41:b1ExpRatio=1<1,20,0.1>-Low: Expand Ratio
+slider42:b1ExpFloor=-80<-80,-10,1>-Low: Expand Floor
+slider43:b2ExpThresh=-40<-60,0,0.5>-Mid: Expand Thresh
+slider44:b2ExpRatio=1<1,20,0.1>-Mid: Expand Ratio
+slider45:b2ExpFloor=-80<-80,-10,1>-Mid: Expand Floor
+slider46:b3ExpThresh=-40<-60,0,0.5>-High: Expand Thresh
+slider47:b3ExpRatio=1<1,20,0.1>-High: Expand Ratio
+slider48:b3ExpFloor=-80<-80,-10,1>-High: Expand Floor
+
+// --- CMR (3) ---
+slider49:cmrLow=0<0,1,0.01>-CMR Low
+slider50:cmrMid=0<0,1,0.01>-CMR Mid
+slider51:cmrHigh=0<0,1,0.01>-CMR High
+
+// --- Master (5) ---
+slider52:dirEmphasis=0<0,1,0.01>-Dir. Emphasis
+slider53:b1SelfSup=0<0,1,0.01>-Self Suppress
+slider54:outGain=0<-20,20,0.1>-Output Gain
+slider55:gainSmooth=0<0,1,0.001>-Gain Smooth
+slider56:mix=1<0,1,0.001>-Dry/Wet
+
+// --- LFE Sidechain (3, Phase 2) ---
+slider57:lfeModDepth=0<0,1,0.01>-LFE Mod Depth
+slider58:lfeAttack=50<1,500,1>-LFE Attack (ms)
+slider59:lfeRelease=300<50,2000,1>-LFE Release (ms)
+
+@init
+
+// === Memory layout constants ===
+// SD memory (unchanged)
+BIQUAD_COEFF = 0;        // 40: 8 sets x 5 coefficients
+BIQUAD_STATE = 40;       // 256: 8ch x 4 xover points
+ENV_STATE = 296;          // 24: 6 groups x 4 followers
+ENV_COEFF = 320;          // 48: 6 groups x 8 coefficients
+BAND_GAIN_DB = 368;       // 6: 3 front + 3 surround display
+SS_STATE = 374;           // 6: 3 bands x 2 (mid_sq, side_sq)
+GATE_STATE = 380;         // 3: transient gate smoothing
+// SI memory (appended)
+CK_ENV = 383;             // 1: center duck envelope
+CK_COEFF = 384;           // 2: center duck att/rel
+SUB_XOVER_STATE = 386;    // 16: FC subtraction crossover state
+BOOST_ENV = 402;          // 1: adaptive EQ boost envelope
+BOOST_COEFF = 403;        // 2: boost att/rel
+BOOST_LOW_COEFF = 405;    // 5: low peaking EQ biquad coeff
+BOOST_HI_COEFF = 410;     // 5: high peaking EQ biquad coeff
+BOOST_LOW_STATE = 415;    // 16: low EQ state (8ch x 2)
+BOOST_HI_STATE = 431;     // 16: high EQ state (8ch x 2)
+// LFE (pre-allocated for Phase 2)
+LFE_ENV = 447;            // 1: LFE energy envelope
+LFE_COEFF = 448;          // 2: LFE att/rel
+// UI
+SLIDER_RECTS = 450;       // 256: 64 slots x 4
+DRAG_STATE = 706;          // 1
+LAST_MOUSE_X = 707;        // 1
+MEM_SIZE = 708;
+
+DB_K = 20 / log(10);
+BW_Q = 0.7071067811865476;
+
+memset(0, 0, MEM_SIZE);
+freembuf(MEM_SIZE);
+
+// Display smoothing (global vars, outside heap)
+disp_g1 = 0; disp_g2 = 0; disp_g3 = 0;
+disp_gs1 = 0; disp_gs2 = 0; disp_gs3 = 0;
+disp_ck_duck = 0;
+boost_display = 0;
+
+// === Helper functions ===
+
+function calc_biquad_lp(offset, freq)
+  local(w0, cw0, sw0, alpha, a0)
+(
+  w0 = 2 * $pi * freq / srate;
+  cw0 = cos(w0); sw0 = sin(w0);
+  alpha = sw0 / (2 * BW_Q);
+  a0 = 1 + alpha;
+  offset[0] = (1 - cw0) / 2 / a0;
+  offset[1] = (1 - cw0) / a0;
+  offset[2] = (1 - cw0) / 2 / a0;
+  offset[3] = (-2 * cw0) / a0;
+  offset[4] = (1 - alpha) / a0;
+);
+
+function calc_biquad_hp(offset, freq)
+  local(w0, cw0, sw0, alpha, a0)
+(
+  w0 = 2 * $pi * freq / srate;
+  cw0 = cos(w0); sw0 = sin(w0);
+  alpha = sw0 / (2 * BW_Q);
+  a0 = 1 + alpha;
+  offset[0] = (1 + cw0) / 2 / a0;
+  offset[1] = -(1 + cw0) / a0;
+  offset[2] = (1 + cw0) / 2 / a0;
+  offset[3] = (-2 * cw0) / a0;
+  offset[4] = (1 - alpha) / a0;
+);
+
+function calc_peaking_eq(offset, freq, gain_db, Q)
+  local(A, w0, cw0, sw0, alpha, a0)
+(
+  A = exp(gain_db / (2 * DB_K));
+  w0 = 2 * $pi * freq / srate;
+  cw0 = cos(w0); sw0 = sin(w0);
+  alpha = sw0 / (2 * Q);
+  a0 = 1 + alpha / A;
+  offset[0] = (1 + alpha * A) / a0;
+  offset[1] = (-2 * cw0) / a0;
+  offset[2] = (1 - alpha * A) / a0;
+  offset[3] = (-2 * cw0) / a0;
+  offset[4] = (1 - alpha / A) / a0;
+);
+
+function process_biquad(x, co, so)
+  local(y)
+(
+  y = co[0] * x + so[0];
+  so[0] = co[1] * x - co[3] * y + so[1];
+  so[1] = co[2] * x - co[4] * y;
+  y;
+);
+
+function lr4_lp(x, ci, ch)
+  local(co, sb, tmp)
+(
+  co = BIQUAD_COEFF + ci * 10;
+  sb = BIQUAD_STATE + ci * 64;
+  tmp = process_biquad(x, co, sb + ch * 2);
+  process_biquad(tmp, co, sb + 16 + ch * 2);
+);
+
+function lr4_hp(x, ci, ch)
+  local(co, sb, tmp)
+(
+  co = BIQUAD_COEFF + ci * 10 + 5;
+  sb = BIQUAD_STATE + ci * 64;
+  tmp = process_biquad(x, co, sb + 32 + ch * 2);
+  process_biquad(tmp, co, sb + 48 + ch * 2);
+);
+
+function eval_follower(input, eo, co)
+  local(env)
+(
+  env = eo[0];
+  input > env ? (
+    env = co[0] * (env - input) + input;
+  ) : (
+    env = co[1] * (env - input) + input;
+  );
+  eo[0] = env;
+  env;
+);
+
+function time_to_coeff(t)
+(
+  exp(-1.0 / (t * srate));
+);
+
+function calc_band_gain(level, bi, atk_str, sus_str, exp_thresh, exp_ratio, exp_floor)
+  local(level_db, eo, co, fast_e, atk_e, dec_e, gain_db, below, exp_reduction, exp_gain_db, sus_delta, sus_cut_db)
+(
+  level_db = DB_K * log(level + 0.0000000001);
+  eo = ENV_STATE + bi * 4;
+  co = ENV_COEFF + bi * 8;
+  fast_e = eval_follower(level_db, eo, co);
+  atk_e  = eval_follower(level_db, eo + 1, co + 2);
+  dec_e  = eval_follower(level_db, eo + 2, co + 4);
+
+  sus_delta = dec_e - fast_e;
+  sus_delta > 0 ? (
+    sus_cut_db = sus_str * sus_delta * (1.0 + 2.0 * abs(sus_str) * sus_delta / 15.0);
+  ) : (
+    sus_cut_db = 0;
+  );
+  gain_db = (atk_str * (atk_e - fast_e)) + sus_cut_db;
+
+  exp_ratio > 1 && level_db < exp_thresh ? (
+    below = exp_thresh - level_db;
+    exp_reduction = below * (exp_ratio - 1);
+    exp_gain_db = -min(exp_reduction, level_db + gain_db - exp_floor);
+    exp_gain_db = min(0, exp_gain_db);
+    gain_db += exp_gain_db;
+  );
+
+  gainSmooth > 0 ? (
+    gain_db = eval_follower(gain_db, eo + 3, co + 6);
+  );
+
+  gain_db = max(-40, min(24, gain_db));
+  BAND_GAIN_DB[bi] = gain_db;
+  exp(gain_db / DB_K);
+);
+
+// draw_hslider: SI version with extended hit rect covering label
+function draw_hslider(sx, sy, sw, sh, val, vmin, vmax, cr, cg, cb, slider_idx, is_bipolar)
+  local(sr, norm, fill_w, fill_x, center_x)
+(
+  sr = SLIDER_RECTS + slider_idx * 4;
+  sr[0] = sx; sr[1] = sy - lbl_h; sr[2] = sw; sr[3] = sh + lbl_h;
+
+  gfx_set(trk_bg_r, trk_bg_g, trk_bg_b, 1);
+  gfx_x = sx; gfx_y = sy;
+  gfx_rectto(sx + sw, sy + sh);
+
+  gfx_set(trk_brd_r, trk_brd_g, trk_brd_b, 1);
+  gfx_line(sx, sy, sx + sw - 1, sy);
+  gfx_line(sx, sy + sh - 1, sx + sw - 1, sy + sh - 1);
+  gfx_line(sx, sy, sx, sy + sh - 1);
+  gfx_line(sx + sw - 1, sy, sx + sw - 1, sy + sh - 1);
+
+  norm = (val - vmin) / (vmax - vmin);
+
+  is_bipolar ? (
+    center_x = sx + sw * 0.5;
+    norm > 0.5 ? (
+      gfx_set(cr, cg, cb, 0.6);
+      fill_x = center_x;
+      fill_w = (norm - 0.5) * sw;
+      gfx_x = fill_x; gfx_y = sy + 1;
+      gfx_rectto(fill_x + fill_w, sy + sh - 1);
+    ) : norm < 0.5 ? (
+      gfx_set(red_r, red_g, red_b, 0.6);
+      fill_w = (0.5 - norm) * sw;
+      fill_x = center_x - fill_w;
+      gfx_x = fill_x; gfx_y = sy + 1;
+      gfx_rectto(center_x, sy + sh - 1);
+    );
+    gfx_set(1, 1, 1, 0.25);
+    gfx_line(center_x, sy, center_x, sy + sh - 1);
+  ) : (
+    fill_w = norm * sw;
+    gfx_set(cr, cg, cb, 0.6);
+    gfx_x = sx; gfx_y = sy + 1;
+    gfx_rectto(sx + fill_w, sy + sh - 1);
+  );
+);
+
+// --- Compute initial biquad coefficients (SD 4-point) ---
+calc_biquad_lp(BIQUAD_COEFF,      lowCut);
+calc_biquad_hp(BIQUAD_COEFF + 5,  lowCut);
+calc_biquad_lp(BIQUAD_COEFF + 10, xover1);
+calc_biquad_hp(BIQUAD_COEFF + 15, xover1);
+calc_biquad_lp(BIQUAD_COEFF + 20, xover2);
+calc_biquad_hp(BIQUAD_COEFF + 25, xover2);
+calc_biquad_lp(BIQUAD_COEFF + 30, highCut);
+calc_biquad_hp(BIQUAD_COEFF + 35, highCut);
+
+out_gain_lin = exp(outGain / DB_K);
+
+// Initial boost peaking EQ coefficients
+boostLow > 0 ? calc_peaking_eq(BOOST_LOW_COEFF, boostLowFreq, boostLow, boostLowQ);
+boostHigh > 0 ? calc_peaking_eq(BOOST_HI_COEFF, boostHighFreq, boostHigh, boostHighQ);
+
+@slider
+
+// Enforce frequency ordering: lowCut < xover1 < xover2 < highCut
+xover1 = max(xover1, lowCut + 1);
+xover2 = max(xover2, xover1 + 1);
+highCut = max(highCut, xover2 + 1);
+xover2 = min(xover2, highCut - 1);
+xover1 = min(xover1, xover2 - 1);
+lowCut = min(lowCut, xover1 - 1);
+
+// Recalculate all biquad coefficients
+calc_biquad_lp(BIQUAD_COEFF,      lowCut);
+calc_biquad_hp(BIQUAD_COEFF + 5,  lowCut);
+calc_biquad_lp(BIQUAD_COEFF + 10, xover1);
+calc_biquad_hp(BIQUAD_COEFF + 15, xover1);
+calc_biquad_lp(BIQUAD_COEFF + 20, xover2);
+calc_biquad_hp(BIQUAD_COEFF + 25, xover2);
+calc_biquad_lp(BIQUAD_COEFF + 30, highCut);
+calc_biquad_hp(BIQUAD_COEFF + 35, highCut);
+
+out_gain_lin = exp(outGain / DB_K);
+
+// Recalculate boost peaking EQ coefficients
+boostLow > 0 ? calc_peaking_eq(BOOST_LOW_COEFF, boostLowFreq, boostLow, boostLowQ);
+boostHigh > 0 ? calc_peaking_eq(BOOST_HI_COEFF, boostHighFreq, boostHigh, boostHighQ);
+
+@block
+
+// === SD envelope coefficient precomputation ===
+fast_att_t = 0.0001;
+fast_rel_t = 0.12;
+atk_rel_t  = 0.15;
+dec_att_t  = 0.0001;
+
+b1_atk_t = 0.0001 + (1 - b1Attack)  * 0.3;
+b1_sus_t = 0.0001 + (1 - b1Sustain) * 0.5;
+b2_atk_t = 0.0001 + (1 - b2Attack)  * 0.3;
+b2_sus_t = 0.0001 + (1 - b2Sustain) * 0.5;
+b3_atk_t = 0.0001 + (1 - b3Attack)  * 0.3;
+b3_sus_t = 0.0001 + (1 - b3Sustain) * 0.5;
+
+smooth_t = max(0.0001, gainSmooth * 0.05);
+
+// Self-suppress smoothing (~10ms)
+ss_alpha = 1.0 - exp(-1.0 / (0.01 * srate));
+// Transient gate smoothing (~5ms)
+gate_alpha = 1.0 - exp(-1.0 / (0.005 * srate));
+
+// Front Band 1 (ENV_COEFF + 0..7)
+ENV_COEFF[0] = time_to_coeff(fast_att_t);
+ENV_COEFF[1] = time_to_coeff(fast_rel_t);
+ENV_COEFF[2] = time_to_coeff(b1_atk_t);
+ENV_COEFF[3] = time_to_coeff(atk_rel_t);
+ENV_COEFF[4] = time_to_coeff(dec_att_t);
+ENV_COEFF[5] = time_to_coeff(b1_sus_t);
+ENV_COEFF[6] = time_to_coeff(smooth_t);
+ENV_COEFF[7] = time_to_coeff(smooth_t);
+
+// Front Band 2 (ENV_COEFF + 8..15)
+ENV_COEFF[8]  = time_to_coeff(fast_att_t);
+ENV_COEFF[9]  = time_to_coeff(fast_rel_t);
+ENV_COEFF[10] = time_to_coeff(b2_atk_t);
+ENV_COEFF[11] = time_to_coeff(atk_rel_t);
+ENV_COEFF[12] = time_to_coeff(dec_att_t);
+ENV_COEFF[13] = time_to_coeff(b2_sus_t);
+ENV_COEFF[14] = time_to_coeff(smooth_t);
+ENV_COEFF[15] = time_to_coeff(smooth_t);
+
+// Front Band 3 (ENV_COEFF + 16..23)
+ENV_COEFF[16] = time_to_coeff(fast_att_t);
+ENV_COEFF[17] = time_to_coeff(fast_rel_t);
+ENV_COEFF[18] = time_to_coeff(b3_atk_t);
+ENV_COEFF[19] = time_to_coeff(atk_rel_t);
+ENV_COEFF[20] = time_to_coeff(dec_att_t);
+ENV_COEFF[21] = time_to_coeff(b3_sus_t);
+ENV_COEFF[22] = time_to_coeff(smooth_t);
+ENV_COEFF[23] = time_to_coeff(smooth_t);
+
+// Surround Band 1 (ENV_COEFF + 24..31) = copy of Front Band 1
+ENV_COEFF[24] = ENV_COEFF[0]; ENV_COEFF[25] = ENV_COEFF[1];
+ENV_COEFF[26] = ENV_COEFF[2]; ENV_COEFF[27] = ENV_COEFF[3];
+ENV_COEFF[28] = ENV_COEFF[4]; ENV_COEFF[29] = ENV_COEFF[5];
+ENV_COEFF[30] = ENV_COEFF[6]; ENV_COEFF[31] = ENV_COEFF[7];
+
+// Surround Band 2 (ENV_COEFF + 32..39)
+ENV_COEFF[32] = ENV_COEFF[8];  ENV_COEFF[33] = ENV_COEFF[9];
+ENV_COEFF[34] = ENV_COEFF[10]; ENV_COEFF[35] = ENV_COEFF[11];
+ENV_COEFF[36] = ENV_COEFF[12]; ENV_COEFF[37] = ENV_COEFF[13];
+ENV_COEFF[38] = ENV_COEFF[14]; ENV_COEFF[39] = ENV_COEFF[15];
+
+// Surround Band 3 (ENV_COEFF + 40..47)
+ENV_COEFF[40] = ENV_COEFF[16]; ENV_COEFF[41] = ENV_COEFF[17];
+ENV_COEFF[42] = ENV_COEFF[18]; ENV_COEFF[43] = ENV_COEFF[19];
+ENV_COEFF[44] = ENV_COEFF[20]; ENV_COEFF[45] = ENV_COEFF[21];
+ENV_COEFF[46] = ENV_COEFF[22]; ENV_COEFF[47] = ENV_COEFF[23];
+
+// === SI center duck coefficients ===
+CK_COEFF[0] = time_to_coeff(ckAttack * 0.001);
+CK_COEFF[1] = time_to_coeff(ckRelease * 0.001);
+
+// === SI boost envelope coefficients ===
+BOOST_COEFF[0] = time_to_coeff(boostAttack * 0.001);
+BOOST_COEFF[1] = time_to_coeff(boostRelease * 0.001);
+
+// === SI boost peaking EQ coefficients ===
+boostLow > 0 ? calc_peaking_eq(BOOST_LOW_COEFF, boostLowFreq, boostLow, boostLowQ);
+boostHigh > 0 ? calc_peaking_eq(BOOST_HI_COEFF, boostHighFreq, boostHigh, boostHighQ);
+
+// === LFE sidechain envelope coefficients ===
+LFE_COEFF[0] = time_to_coeff(lfeAttack * 0.001);
+LFE_COEFF[1] = time_to_coeff(lfeRelease * 0.001);
+
+@sample
+
+// === Step 0: Channel mode detection (SI) ===
+num_ch == 7 ? ( ck_mode = 3; )
+: num_ch >= 6 ? ( ck_mode = 2; )
+: num_ch >= 3 ? ( ck_mode = 1; )
+: ( ck_mode = 0; );
+
+// === LFE sidechain: read scene intensity from sub-bass channel ===
+num_ch >= 8 ? (
+  lfe_abs = abs(spl7);
+  lfe_db = DB_K * log(lfe_abs + 1e-10);
+  lfe_env_db = eval_follower(lfe_db, LFE_ENV, LFE_COEFF);
+  lfe_norm = max(0, min(1, (lfe_env_db + 110) / 80));
+  lfe_factor = (1.0 - lfeModDepth) + lfeModDepth * lfe_norm;
+) : (
+  lfe_norm = 0;
+  lfe_factor = 1.0;
+);
+
+// === Step 1: Store dry input (SD) ===
+dry0 = spl0;
+dry1 = spl1;
+num_ch >= 4 ? ( dry2 = spl2; dry3 = spl3; );
+num_ch >= 6 ? ( dry4 = spl4; dry5 = spl5; );
+num_ch >= 7 ? ( dry6 = spl6; );
+
+// === Step 2: FC Self-Suppression (SI, coefficient offsets remapped) ===
+ck_mode >= 1 ? (
+  ck_mode == 2 ? (
+    fc_raw = (spl4 + spl5) * 0.5;
+  ) : (
+    fc_raw = spl2;
+  );
+
+  (ckSubLow > 0 || ckSubMid > 0 || ckSubHigh > 0) ? (
+    // Split FC through xover1 (SD coeff offset 10/15) with separate state
+    fc_low = process_biquad(fc_raw, BIQUAD_COEFF + 10, SUB_XOVER_STATE);
+    fc_low = process_biquad(fc_low, BIQUAD_COEFF + 10, SUB_XOVER_STATE + 2);
+    fc_above1 = process_biquad(fc_raw, BIQUAD_COEFF + 15, SUB_XOVER_STATE + 4);
+    fc_above1 = process_biquad(fc_above1, BIQUAD_COEFF + 15, SUB_XOVER_STATE + 6);
+
+    // Split through xover2 (SD coeff offset 20/25)
+    fc_mid = process_biquad(fc_above1, BIQUAD_COEFF + 20, SUB_XOVER_STATE + 8);
+    fc_mid = process_biquad(fc_mid, BIQUAD_COEFF + 20, SUB_XOVER_STATE + 10);
+    fc_high = process_biquad(fc_above1, BIQUAD_COEFF + 25, SUB_XOVER_STATE + 12);
+    fc_high = process_biquad(fc_high, BIQUAD_COEFF + 25, SUB_XOVER_STATE + 14);
+
+    fc_sub = ckSubLow * lfe_factor * fc_low + ckSubMid * lfe_factor * fc_mid + ckSubHigh * lfe_factor * fc_high;
+    spl0 -= fc_sub;
+    spl1 -= fc_sub;
+    ck_mode == 2 ? ( spl2 -= fc_sub; spl3 -= fc_sub; );
+  );
+);
+
+// === Step 3: Self Sound Gate / Center Duck (SI) ===
+ck_mode >= 1 ? (
+  ck_mode == 2 ? (
+    ck_level = max(abs(spl4), abs(spl5));
+  ) : (
+    ck_level = abs(spl2);
+  );
+
+  ck_level_db = DB_K * log(ck_level + 1e-10);
+
+  ck_env = CK_ENV[0];
+  ck_level_db > ck_env ? (
+    ck_env = CK_COEFF[0] * (ck_env - ck_level_db) + ck_level_db;
+  ) : (
+    ck_env = CK_COEFF[1] * (ck_env - ck_level_db) + ck_level_db;
+  );
+  CK_ENV[0] = ck_env;
+
+  ck_env > ckThresh ? (
+    ckKnee > 0 ? (
+      ck_above = ck_env - ckThresh;
+      ck_ratio = min(1.0, ck_above / ckKnee);
+      ck_reduction_db = ckDuck * lfe_factor * ck_ratio;
+    ) : (
+      ck_reduction_db = ckDuck * lfe_factor;
+    );
+    ck_gain = exp(ck_reduction_db / DB_K);
+  ) : (
+    ck_reduction_db = 0;
+    ck_gain = 1.0;
+  );
+
+  ck_duck_display = abs(ck_reduction_db);
+
+  // M/S selective duck on L/R
+  mid_sig = (spl0 + spl1) * 0.5;
+  side_sig = (spl0 - spl1) * 0.5;
+  mid_sig *= ck_gain;
+  spl0 = mid_sig + side_sig;
+  spl1 = mid_sig - side_sig;
+  ck_mode == 2 ? (
+    mid_sig = (spl2 + spl3) * 0.5;
+    side_sig = (spl2 - spl3) * 0.5;
+    mid_sig *= ck_gain;
+    spl2 = mid_sig + side_sig;
+    spl3 = mid_sig - side_sig;
+  );
+
+  // Zero center channel after sidechain use
+  ck_mode == 2 ? (
+    spl4 = 0; spl5 = 0;
+  ) : (
+    spl2 = 0;
+  );
+) : (
+  ck_duck_display = 0;
+  ck_gain = 1.0;
+);
+
+// === Step 4: Adaptive EQ (SI) ===
+(boostLow > 0 || boostHigh > 0) ? (
+
+  // FC-based gate
+  boost_target = (ck_gain > 0.9 && lfe_norm < 0.5) ? 1.0 : 0.0;
+
+  // Gunshot rejection: suppress if any channel very loud
+  ck_mode == 3 ? (
+    peak_all = max(max(max(abs(spl0), abs(spl1)), max(abs(spl3), abs(spl4))),
+                   max(abs(spl5), abs(spl6)));
+  ) : ck_mode == 2 ? (
+    peak_all = max(max(abs(spl0), abs(spl1)), max(abs(spl2), abs(spl3)));
+  ) : (
+    peak_all = max(abs(spl0), abs(spl1));
+  );
+  peak_all_db = DB_K * log(peak_all + 1e-10);
+  peak_all_db > boostRejectThresh ? (
+    boost_target = 0;
+  );
+
+  // Smooth envelope
+  boost_env = BOOST_ENV[0];
+  boost_target > boost_env ? (
+    boost_env = BOOST_COEFF[0] * (boost_env - boost_target) + boost_target;
+  ) : (
+    boost_env = BOOST_COEFF[1] * (boost_env - boost_target) + boost_target;
+  );
+  BOOST_ENV[0] = boost_env;
+  boost_display = boost_env;
+
+  // Apply boost via interpolated peaking EQ
+  ck_mode == 3 ? (
+    // Mode D: boost spl0,1,3,4,5,6
+    boostLow > 0 ? (
+      tmp = process_biquad(spl0, BOOST_LOW_COEFF, BOOST_LOW_STATE);
+      spl0 += (tmp - spl0) * boost_env;
+      tmp = process_biquad(spl1, BOOST_LOW_COEFF, BOOST_LOW_STATE + 2);
+      spl1 += (tmp - spl1) * boost_env;
+      tmp = process_biquad(spl3, BOOST_LOW_COEFF, BOOST_LOW_STATE + 4);
+      spl3 += (tmp - spl3) * boost_env;
+      tmp = process_biquad(spl4, BOOST_LOW_COEFF, BOOST_LOW_STATE + 6);
+      spl4 += (tmp - spl4) * boost_env;
+      tmp = process_biquad(spl5, BOOST_LOW_COEFF, BOOST_LOW_STATE + 8);
+      spl5 += (tmp - spl5) * boost_env;
+      tmp = process_biquad(spl6, BOOST_LOW_COEFF, BOOST_LOW_STATE + 10);
+      spl6 += (tmp - spl6) * boost_env;
+    );
+    boostHigh > 0 ? (
+      tmp = process_biquad(spl0, BOOST_HI_COEFF, BOOST_HI_STATE);
+      spl0 += (tmp - spl0) * boost_env;
+      tmp = process_biquad(spl1, BOOST_HI_COEFF, BOOST_HI_STATE + 2);
+      spl1 += (tmp - spl1) * boost_env;
+      tmp = process_biquad(spl3, BOOST_HI_COEFF, BOOST_HI_STATE + 4);
+      spl3 += (tmp - spl3) * boost_env;
+      tmp = process_biquad(spl4, BOOST_HI_COEFF, BOOST_HI_STATE + 6);
+      spl4 += (tmp - spl4) * boost_env;
+      tmp = process_biquad(spl5, BOOST_HI_COEFF, BOOST_HI_STATE + 8);
+      spl5 += (tmp - spl5) * boost_env;
+      tmp = process_biquad(spl6, BOOST_HI_COEFF, BOOST_HI_STATE + 10);
+      spl6 += (tmp - spl6) * boost_env;
+    );
+  ) : ck_mode == 1 ? (
+    // Mode A: boost spl0, spl1 only
+    boostLow > 0 ? (
+      tmp = process_biquad(spl0, BOOST_LOW_COEFF, BOOST_LOW_STATE);
+      spl0 += (tmp - spl0) * boost_env;
+      tmp = process_biquad(spl1, BOOST_LOW_COEFF, BOOST_LOW_STATE + 2);
+      spl1 += (tmp - spl1) * boost_env;
+    );
+    boostHigh > 0 ? (
+      tmp = process_biquad(spl0, BOOST_HI_COEFF, BOOST_HI_STATE);
+      spl0 += (tmp - spl0) * boost_env;
+      tmp = process_biquad(spl1, BOOST_HI_COEFF, BOOST_HI_STATE + 2);
+      spl1 += (tmp - spl1) * boost_env;
+    );
+  ) : ck_mode == 2 ? (
+    // Mode B: boost spl0-spl3
+    boostLow > 0 ? (
+      tmp = process_biquad(spl0, BOOST_LOW_COEFF, BOOST_LOW_STATE);
+      spl0 += (tmp - spl0) * boost_env;
+      tmp = process_biquad(spl1, BOOST_LOW_COEFF, BOOST_LOW_STATE + 2);
+      spl1 += (tmp - spl1) * boost_env;
+      tmp = process_biquad(spl2, BOOST_LOW_COEFF, BOOST_LOW_STATE + 4);
+      spl2 += (tmp - spl2) * boost_env;
+      tmp = process_biquad(spl3, BOOST_LOW_COEFF, BOOST_LOW_STATE + 6);
+      spl3 += (tmp - spl3) * boost_env;
+    );
+    boostHigh > 0 ? (
+      tmp = process_biquad(spl0, BOOST_HI_COEFF, BOOST_HI_STATE);
+      spl0 += (tmp - spl0) * boost_env;
+      tmp = process_biquad(spl1, BOOST_HI_COEFF, BOOST_HI_STATE + 2);
+      spl1 += (tmp - spl1) * boost_env;
+      tmp = process_biquad(spl2, BOOST_HI_COEFF, BOOST_HI_STATE + 4);
+      spl2 += (tmp - spl2) * boost_env;
+      tmp = process_biquad(spl3, BOOST_HI_COEFF, BOOST_HI_STATE + 6);
+      spl3 += (tmp - spl3) * boost_env;
+    );
+  );
+);
+
+// === Step 5: SD Crossover Split (4-point) ===
+
+// Low Cut split (crossover index 0)
+pass_low_0 = lr4_lp(spl0, 0, 0);
+pass_low_1 = lr4_lp(spl1, 0, 1);
+above_low_0 = lr4_hp(spl0, 0, 0);
+above_low_1 = lr4_hp(spl1, 0, 1);
+num_ch >= 4 ? (
+  pass_low_2 = lr4_lp(spl2, 0, 2);
+  pass_low_3 = lr4_lp(spl3, 0, 3);
+  above_low_2 = lr4_hp(spl2, 0, 2);
+  above_low_3 = lr4_hp(spl3, 0, 3);
+);
+num_ch >= 6 ? (
+  pass_low_4 = lr4_lp(spl4, 0, 4);
+  pass_low_5 = lr4_lp(spl5, 0, 5);
+  above_low_4 = lr4_hp(spl4, 0, 4);
+  above_low_5 = lr4_hp(spl5, 0, 5);
+);
+num_ch >= 7 ? (
+  pass_low_6 = lr4_lp(spl6, 0, 6);
+  above_low_6 = lr4_hp(spl6, 0, 6);
+);
+
+// Crossover 1 split (crossover index 1)
+band1_0 = lr4_lp(above_low_0, 1, 0);
+band1_1 = lr4_lp(above_low_1, 1, 1);
+above1_0 = lr4_hp(above_low_0, 1, 0);
+above1_1 = lr4_hp(above_low_1, 1, 1);
+num_ch >= 4 ? (
+  band1_2 = lr4_lp(above_low_2, 1, 2);
+  band1_3 = lr4_lp(above_low_3, 1, 3);
+  above1_2 = lr4_hp(above_low_2, 1, 2);
+  above1_3 = lr4_hp(above_low_3, 1, 3);
+);
+num_ch >= 6 ? (
+  band1_4 = lr4_lp(above_low_4, 1, 4);
+  band1_5 = lr4_lp(above_low_5, 1, 5);
+  above1_4 = lr4_hp(above_low_4, 1, 4);
+  above1_5 = lr4_hp(above_low_5, 1, 5);
+);
+num_ch >= 7 ? (
+  band1_6 = lr4_lp(above_low_6, 1, 6);
+  above1_6 = lr4_hp(above_low_6, 1, 6);
+);
+
+// Crossover 2 split (crossover index 2)
+band2_0 = lr4_lp(above1_0, 2, 0);
+band2_1 = lr4_lp(above1_1, 2, 1);
+above2_0 = lr4_hp(above1_0, 2, 0);
+above2_1 = lr4_hp(above1_1, 2, 1);
+num_ch >= 4 ? (
+  band2_2 = lr4_lp(above1_2, 2, 2);
+  band2_3 = lr4_lp(above1_3, 2, 3);
+  above2_2 = lr4_hp(above1_2, 2, 2);
+  above2_3 = lr4_hp(above1_3, 2, 3);
+);
+num_ch >= 6 ? (
+  band2_4 = lr4_lp(above1_4, 2, 4);
+  band2_5 = lr4_lp(above1_5, 2, 5);
+  above2_4 = lr4_hp(above1_4, 2, 4);
+  above2_5 = lr4_hp(above1_5, 2, 5);
+);
+num_ch >= 7 ? (
+  band2_6 = lr4_lp(above1_6, 2, 6);
+  above2_6 = lr4_hp(above1_6, 2, 6);
+);
+
+// High Cut split (crossover index 3)
+band3_0 = lr4_lp(above2_0, 3, 0);
+band3_1 = lr4_lp(above2_1, 3, 1);
+pass_high_0 = lr4_hp(above2_0, 3, 0);
+pass_high_1 = lr4_hp(above2_1, 3, 1);
+num_ch >= 4 ? (
+  band3_2 = lr4_lp(above2_2, 3, 2);
+  band3_3 = lr4_lp(above2_3, 3, 3);
+  pass_high_2 = lr4_hp(above2_2, 3, 2);
+  pass_high_3 = lr4_hp(above2_3, 3, 3);
+);
+num_ch >= 6 ? (
+  band3_4 = lr4_lp(above2_4, 3, 4);
+  band3_5 = lr4_lp(above2_5, 3, 5);
+  pass_high_4 = lr4_hp(above2_4, 3, 4);
+  pass_high_5 = lr4_hp(above2_5, 3, 5);
+);
+num_ch >= 7 ? (
+  band3_6 = lr4_lp(above2_6, 3, 6);
+  pass_high_6 = lr4_hp(above2_6, 3, 6);
+);
+
+// === Step 6: SD Self-Suppress ===
+ratio_b1 = 1; ratio_b2 = 1; ratio_b3 = 1;
+
+b1SelfSup > 0 ? (
+  num_ch >= 7 ? (
+    // 7ch: Band 1 self-suppress (adaptive + gated)
+    surr_mid_b1 = (band1_3 + band1_4 + band1_5 + band1_6) * 0.25;
+    mid_sq = surr_mid_b1 * surr_mid_b1;
+    side_sq = ((band1_3 - surr_mid_b1) * (band1_3 - surr_mid_b1)
+             + (band1_4 - surr_mid_b1) * (band1_4 - surr_mid_b1)
+             + (band1_5 - surr_mid_b1) * (band1_5 - surr_mid_b1)
+             + (band1_6 - surr_mid_b1) * (band1_6 - surr_mid_b1)) * 0.25;
+    SS_STATE[0] += ss_alpha * (mid_sq  - SS_STATE[0]);
+    SS_STATE[1] += ss_alpha * (side_sq - SS_STATE[1]);
+    ratio_b1 = SS_STATE[0] / (SS_STATE[0] + SS_STATE[1] + 1e-20);
+
+    eo_surr = ENV_STATE + 3 * 4;
+    is_transient = eo_surr[0] > eo_surr[1] ? 1 : 0;
+    GATE_STATE[0] += gate_alpha * (is_transient - GATE_STATE[0]);
+
+    suppress_amount_b1 = b1SelfSup * lfe_factor * ratio_b1 * GATE_STATE[0];
+    band1_0 -= surr_mid_b1 * suppress_amount_b1;
+    band1_1 -= surr_mid_b1 * suppress_amount_b1;
+    // band1_2: FC -- NOT suppressed
+    band1_3 -= surr_mid_b1 * suppress_amount_b1;
+    band1_4 -= surr_mid_b1 * suppress_amount_b1;
+    band1_5 -= surr_mid_b1 * suppress_amount_b1;
+    band1_6 -= surr_mid_b1 * suppress_amount_b1;
+
+    // 7ch: Band 2 self-suppress
+    surr_mid_b2 = (band2_3 + band2_4 + band2_5 + band2_6) * 0.25;
+    mid_sq = surr_mid_b2 * surr_mid_b2;
+    side_sq = ((band2_3 - surr_mid_b2) * (band2_3 - surr_mid_b2)
+             + (band2_4 - surr_mid_b2) * (band2_4 - surr_mid_b2)
+             + (band2_5 - surr_mid_b2) * (band2_5 - surr_mid_b2)
+             + (band2_6 - surr_mid_b2) * (band2_6 - surr_mid_b2)) * 0.25;
+    SS_STATE[2] += ss_alpha * (mid_sq  - SS_STATE[2]);
+    SS_STATE[3] += ss_alpha * (side_sq - SS_STATE[3]);
+    ratio_b2 = SS_STATE[2] / (SS_STATE[2] + SS_STATE[3] + 1e-20);
+
+    eo_surr = ENV_STATE + 4 * 4;
+    is_transient = eo_surr[0] > eo_surr[1] ? 1 : 0;
+    GATE_STATE[1] += gate_alpha * (is_transient - GATE_STATE[1]);
+
+    suppress_amount_b2 = b1SelfSup * lfe_factor * ratio_b2 * GATE_STATE[1];
+    band2_0 -= surr_mid_b2 * suppress_amount_b2;
+    band2_1 -= surr_mid_b2 * suppress_amount_b2;
+    band2_3 -= surr_mid_b2 * suppress_amount_b2;
+    band2_4 -= surr_mid_b2 * suppress_amount_b2;
+    band2_5 -= surr_mid_b2 * suppress_amount_b2;
+    band2_6 -= surr_mid_b2 * suppress_amount_b2;
+
+    // 7ch: Band 3 self-suppress
+    surr_mid_b3 = (band3_3 + band3_4 + band3_5 + band3_6) * 0.25;
+    mid_sq = surr_mid_b3 * surr_mid_b3;
+    side_sq = ((band3_3 - surr_mid_b3) * (band3_3 - surr_mid_b3)
+             + (band3_4 - surr_mid_b3) * (band3_4 - surr_mid_b3)
+             + (band3_5 - surr_mid_b3) * (band3_5 - surr_mid_b3)
+             + (band3_6 - surr_mid_b3) * (band3_6 - surr_mid_b3)) * 0.25;
+    SS_STATE[4] += ss_alpha * (mid_sq  - SS_STATE[4]);
+    SS_STATE[5] += ss_alpha * (side_sq - SS_STATE[5]);
+    ratio_b3 = SS_STATE[4] / (SS_STATE[4] + SS_STATE[5] + 1e-20);
+
+    eo_surr = ENV_STATE + 5 * 4;
+    is_transient = eo_surr[0] > eo_surr[1] ? 1 : 0;
+    GATE_STATE[2] += gate_alpha * (is_transient - GATE_STATE[2]);
+
+    suppress_amount_b3 = b1SelfSup * lfe_factor * ratio_b3 * GATE_STATE[2];
+    band3_0 -= surr_mid_b3 * suppress_amount_b3;
+    band3_1 -= surr_mid_b3 * suppress_amount_b3;
+    band3_3 -= surr_mid_b3 * suppress_amount_b3;
+    band3_4 -= surr_mid_b3 * suppress_amount_b3;
+    band3_5 -= surr_mid_b3 * suppress_amount_b3;
+    band3_6 -= surr_mid_b3 * suppress_amount_b3;
+
+  ) : num_ch >= 6 ? (
+    // 6ch: Band 1 self-suppress
+    surr_mid_b1 = (band1_2 + band1_3 + band1_4 + band1_5) * 0.25;
+    mid_sq = surr_mid_b1 * surr_mid_b1;
+    side_sq = ((band1_2 - surr_mid_b1) * (band1_2 - surr_mid_b1)
+             + (band1_3 - surr_mid_b1) * (band1_3 - surr_mid_b1)
+             + (band1_4 - surr_mid_b1) * (band1_4 - surr_mid_b1)
+             + (band1_5 - surr_mid_b1) * (band1_5 - surr_mid_b1)) * 0.25;
+    SS_STATE[0] += ss_alpha * (mid_sq  - SS_STATE[0]);
+    SS_STATE[1] += ss_alpha * (side_sq - SS_STATE[1]);
+    ratio_b1 = SS_STATE[0] / (SS_STATE[0] + SS_STATE[1] + 1e-20);
+
+    eo_surr = ENV_STATE + 3 * 4;
+    is_transient = eo_surr[0] > eo_surr[1] ? 1 : 0;
+    GATE_STATE[0] += gate_alpha * (is_transient - GATE_STATE[0]);
+
+    suppress_amount_b1 = b1SelfSup * lfe_factor * ratio_b1 * GATE_STATE[0];
+    band1_0 -= surr_mid_b1 * suppress_amount_b1;
+    band1_1 -= surr_mid_b1 * suppress_amount_b1;
+    band1_2 -= surr_mid_b1 * suppress_amount_b1;
+    band1_3 -= surr_mid_b1 * suppress_amount_b1;
+    band1_4 -= surr_mid_b1 * suppress_amount_b1;
+    band1_5 -= surr_mid_b1 * suppress_amount_b1;
+
+    // 6ch: Band 2 self-suppress
+    surr_mid_b2 = (band2_2 + band2_3 + band2_4 + band2_5) * 0.25;
+    mid_sq = surr_mid_b2 * surr_mid_b2;
+    side_sq = ((band2_2 - surr_mid_b2) * (band2_2 - surr_mid_b2)
+             + (band2_3 - surr_mid_b2) * (band2_3 - surr_mid_b2)
+             + (band2_4 - surr_mid_b2) * (band2_4 - surr_mid_b2)
+             + (band2_5 - surr_mid_b2) * (band2_5 - surr_mid_b2)) * 0.25;
+    SS_STATE[2] += ss_alpha * (mid_sq  - SS_STATE[2]);
+    SS_STATE[3] += ss_alpha * (side_sq - SS_STATE[3]);
+    ratio_b2 = SS_STATE[2] / (SS_STATE[2] + SS_STATE[3] + 1e-20);
+
+    eo_surr = ENV_STATE + 4 * 4;
+    is_transient = eo_surr[0] > eo_surr[1] ? 1 : 0;
+    GATE_STATE[1] += gate_alpha * (is_transient - GATE_STATE[1]);
+
+    suppress_amount_b2 = b1SelfSup * lfe_factor * ratio_b2 * GATE_STATE[1];
+    band2_0 -= surr_mid_b2 * suppress_amount_b2;
+    band2_1 -= surr_mid_b2 * suppress_amount_b2;
+    band2_2 -= surr_mid_b2 * suppress_amount_b2;
+    band2_3 -= surr_mid_b2 * suppress_amount_b2;
+    band2_4 -= surr_mid_b2 * suppress_amount_b2;
+    band2_5 -= surr_mid_b2 * suppress_amount_b2;
+
+    // 6ch: Band 3 self-suppress
+    surr_mid_b3 = (band3_2 + band3_3 + band3_4 + band3_5) * 0.25;
+    mid_sq = surr_mid_b3 * surr_mid_b3;
+    side_sq = ((band3_2 - surr_mid_b3) * (band3_2 - surr_mid_b3)
+             + (band3_3 - surr_mid_b3) * (band3_3 - surr_mid_b3)
+             + (band3_4 - surr_mid_b3) * (band3_4 - surr_mid_b3)
+             + (band3_5 - surr_mid_b3) * (band3_5 - surr_mid_b3)) * 0.25;
+    SS_STATE[4] += ss_alpha * (mid_sq  - SS_STATE[4]);
+    SS_STATE[5] += ss_alpha * (side_sq - SS_STATE[5]);
+    ratio_b3 = SS_STATE[4] / (SS_STATE[4] + SS_STATE[5] + 1e-20);
+
+    eo_surr = ENV_STATE + 5 * 4;
+    is_transient = eo_surr[0] > eo_surr[1] ? 1 : 0;
+    GATE_STATE[2] += gate_alpha * (is_transient - GATE_STATE[2]);
+
+    suppress_amount_b3 = b1SelfSup * lfe_factor * ratio_b3 * GATE_STATE[2];
+    band3_0 -= surr_mid_b3 * suppress_amount_b3;
+    band3_1 -= surr_mid_b3 * suppress_amount_b3;
+    band3_2 -= surr_mid_b3 * suppress_amount_b3;
+    band3_3 -= surr_mid_b3 * suppress_amount_b3;
+    band3_4 -= surr_mid_b3 * suppress_amount_b3;
+    band3_5 -= surr_mid_b3 * suppress_amount_b3;
+
+  ) : num_ch >= 4 ? (
+    // 4ch fallback: fixed ratio
+    mid_b1 = (band1_0 + band1_1 + band1_2 + band1_3) * 0.25;
+    band1_0 -= mid_b1 * b1SelfSup; band1_1 -= mid_b1 * b1SelfSup;
+    band1_2 -= mid_b1 * b1SelfSup; band1_3 -= mid_b1 * b1SelfSup;
+    mid_b2 = (band2_0 + band2_1 + band2_2 + band2_3) * 0.25;
+    band2_0 -= mid_b2 * b1SelfSup; band2_1 -= mid_b2 * b1SelfSup;
+    band2_2 -= mid_b2 * b1SelfSup; band2_3 -= mid_b2 * b1SelfSup;
+    mid_b3 = (band3_0 + band3_1 + band3_2 + band3_3) * 0.25;
+    band3_0 -= mid_b3 * b1SelfSup; band3_1 -= mid_b3 * b1SelfSup;
+    band3_2 -= mid_b3 * b1SelfSup; band3_3 -= mid_b3 * b1SelfSup;
+  );
+);
+
+// === Step 7: SD CMR ===
+num_ch >= 7 ? (
+  cmrLow > 0 ? (
+    cmr_sum_b1 = band1_3 + band1_4 + band1_5 + band1_6;
+    cmr_k = cmrLow * lfe_factor / 3.0; cmr_s = 1.0 + cmr_k;
+    band1_3 = cmr_s * band1_3 - cmr_k * cmr_sum_b1;
+    band1_4 = cmr_s * band1_4 - cmr_k * cmr_sum_b1;
+    band1_5 = cmr_s * band1_5 - cmr_k * cmr_sum_b1;
+    band1_6 = cmr_s * band1_6 - cmr_k * cmr_sum_b1;
+  );
+  cmrMid > 0 ? (
+    cmr_sum_b2 = band2_3 + band2_4 + band2_5 + band2_6;
+    cmr_k = cmrMid * lfe_factor / 3.0; cmr_s = 1.0 + cmr_k;
+    band2_3 = cmr_s * band2_3 - cmr_k * cmr_sum_b2;
+    band2_4 = cmr_s * band2_4 - cmr_k * cmr_sum_b2;
+    band2_5 = cmr_s * band2_5 - cmr_k * cmr_sum_b2;
+    band2_6 = cmr_s * band2_6 - cmr_k * cmr_sum_b2;
+  );
+  cmrHigh > 0 ? (
+    cmr_sum_b3 = band3_3 + band3_4 + band3_5 + band3_6;
+    cmr_k = cmrHigh * lfe_factor / 3.0; cmr_s = 1.0 + cmr_k;
+    band3_3 = cmr_s * band3_3 - cmr_k * cmr_sum_b3;
+    band3_4 = cmr_s * band3_4 - cmr_k * cmr_sum_b3;
+    band3_5 = cmr_s * band3_5 - cmr_k * cmr_sum_b3;
+    band3_6 = cmr_s * band3_6 - cmr_k * cmr_sum_b3;
+  );
+) : num_ch >= 6 ? (
+  cmrLow > 0 ? (
+    cmr_sum_b1 = band1_2 + band1_3 + band1_4 + band1_5;
+    cmr_k = cmrLow * lfe_factor / 3.0; cmr_s = 1.0 + cmr_k;
+    band1_2 = cmr_s * band1_2 - cmr_k * cmr_sum_b1;
+    band1_3 = cmr_s * band1_3 - cmr_k * cmr_sum_b1;
+    band1_4 = cmr_s * band1_4 - cmr_k * cmr_sum_b1;
+    band1_5 = cmr_s * band1_5 - cmr_k * cmr_sum_b1;
+  );
+  cmrMid > 0 ? (
+    cmr_sum_b2 = band2_2 + band2_3 + band2_4 + band2_5;
+    cmr_k = cmrMid * lfe_factor / 3.0; cmr_s = 1.0 + cmr_k;
+    band2_2 = cmr_s * band2_2 - cmr_k * cmr_sum_b2;
+    band2_3 = cmr_s * band2_3 - cmr_k * cmr_sum_b2;
+    band2_4 = cmr_s * band2_4 - cmr_k * cmr_sum_b2;
+    band2_5 = cmr_s * band2_5 - cmr_k * cmr_sum_b2;
+  );
+  cmrHigh > 0 ? (
+    cmr_sum_b3 = band3_2 + band3_3 + band3_4 + band3_5;
+    cmr_k = cmrHigh * lfe_factor / 3.0; cmr_s = 1.0 + cmr_k;
+    band3_2 = cmr_s * band3_2 - cmr_k * cmr_sum_b3;
+    band3_3 = cmr_s * band3_3 - cmr_k * cmr_sum_b3;
+    band3_4 = cmr_s * band3_4 - cmr_k * cmr_sum_b3;
+    band3_5 = cmr_s * band3_5 - cmr_k * cmr_sum_b3;
+  );
+);
+
+// === Step 8: SD Transient Shaping + Directional Emphasis ===
+num_ch >= 7 ? (
+  // 7ch: Band 1 -- Front: FL(0),FR(1),FC(2)  Surround: SL(3),SR(4),RL(5),RR(6)
+  level1_f = max(abs(band1_0), max(abs(band1_1), abs(band1_2)));
+  gain1_f = calc_band_gain(level1_f, 0, fb1AtkStr, fb1SusStr * lfe_factor, b1ExpThresh, b1ExpRatio, b1ExpFloor);
+  band1_0 *= gain1_f; band1_1 *= gain1_f; band1_2 *= gain1_f;
+
+  level1_s = max(abs(band1_3), max(abs(band1_4), max(abs(band1_5), abs(band1_6))));
+  gain1_s = calc_band_gain(level1_s, 3, b1AtkStr, b1SusStr, b1ExpThresh, b1ExpRatio, b1ExpFloor);
+  band1_3 *= gain1_s; band1_4 *= gain1_s; band1_5 *= gain1_s; band1_6 *= gain1_s;
+
+  // 7ch: Band 2
+  level2_f = max(abs(band2_0), max(abs(band2_1), abs(band2_2)));
+  gain2_f = calc_band_gain(level2_f, 1, fb2AtkStr, fb2SusStr * lfe_factor, b2ExpThresh, b2ExpRatio, b2ExpFloor);
+  band2_0 *= gain2_f; band2_1 *= gain2_f; band2_2 *= gain2_f;
+
+  level2_s = max(abs(band2_3), max(abs(band2_4), max(abs(band2_5), abs(band2_6))));
+  gain2_s = calc_band_gain(level2_s, 4, b2AtkStr, b2SusStr, b2ExpThresh, b2ExpRatio, b2ExpFloor);
+  band2_3 *= gain2_s; band2_4 *= gain2_s; band2_5 *= gain2_s; band2_6 *= gain2_s;
+
+  // 7ch: Band 3
+  level3_f = max(abs(band3_0), max(abs(band3_1), abs(band3_2)));
+  gain3_f = calc_band_gain(level3_f, 2, fb3AtkStr, fb3SusStr * lfe_factor, b3ExpThresh, b3ExpRatio, b3ExpFloor);
+  band3_0 *= gain3_f; band3_1 *= gain3_f; band3_2 *= gain3_f;
+
+  level3_s = max(abs(band3_3), max(abs(band3_4), max(abs(band3_5), abs(band3_6))));
+  gain3_s = calc_band_gain(level3_s, 5, b3AtkStr, b3SusStr, b3ExpThresh, b3ExpRatio, b3ExpFloor);
+  band3_3 *= gain3_s; band3_4 *= gain3_s; band3_5 *= gain3_s; band3_6 *= gain3_s;
+
+  // Directional emphasis (surround channels 3-6 only)
+  dirEmphasis > 0 ? (
+    dir_mult_b1 = 1.0 + dirEmphasis * (1.0 - ratio_b1);
+    band1_3 *= dir_mult_b1; band1_4 *= dir_mult_b1;
+    band1_5 *= dir_mult_b1; band1_6 *= dir_mult_b1;
+
+    dir_mult_b2 = 1.0 + dirEmphasis * (1.0 - ratio_b2);
+    band2_3 *= dir_mult_b2; band2_4 *= dir_mult_b2;
+    band2_5 *= dir_mult_b2; band2_6 *= dir_mult_b2;
+
+    dir_mult_b3 = 1.0 + dirEmphasis * (1.0 - ratio_b3);
+    band3_3 *= dir_mult_b3; band3_4 *= dir_mult_b3;
+    band3_5 *= dir_mult_b3; band3_6 *= dir_mult_b3;
+  );
+
+) : num_ch >= 6 ? (
+  // 6ch: Band 1
+  level1_f = max(abs(band1_0), abs(band1_1));
+  gain1_f = calc_band_gain(level1_f, 0, fb1AtkStr, fb1SusStr * lfe_factor, b1ExpThresh, b1ExpRatio, b1ExpFloor);
+  band1_0 *= gain1_f; band1_1 *= gain1_f;
+
+  level1_s = max(abs(band1_2), max(abs(band1_3), max(abs(band1_4), abs(band1_5))));
+  gain1_s = calc_band_gain(level1_s, 3, b1AtkStr, b1SusStr, b1ExpThresh, b1ExpRatio, b1ExpFloor);
+  band1_2 *= gain1_s; band1_3 *= gain1_s; band1_4 *= gain1_s; band1_5 *= gain1_s;
+
+  // 6ch: Band 2
+  level2_f = max(abs(band2_0), abs(band2_1));
+  gain2_f = calc_band_gain(level2_f, 1, fb2AtkStr, fb2SusStr * lfe_factor, b2ExpThresh, b2ExpRatio, b2ExpFloor);
+  band2_0 *= gain2_f; band2_1 *= gain2_f;
+
+  level2_s = max(abs(band2_2), max(abs(band2_3), max(abs(band2_4), abs(band2_5))));
+  gain2_s = calc_band_gain(level2_s, 4, b2AtkStr, b2SusStr, b2ExpThresh, b2ExpRatio, b2ExpFloor);
+  band2_2 *= gain2_s; band2_3 *= gain2_s; band2_4 *= gain2_s; band2_5 *= gain2_s;
+
+  // 6ch: Band 3
+  level3_f = max(abs(band3_0), abs(band3_1));
+  gain3_f = calc_band_gain(level3_f, 2, fb3AtkStr, fb3SusStr * lfe_factor, b3ExpThresh, b3ExpRatio, b3ExpFloor);
+  band3_0 *= gain3_f; band3_1 *= gain3_f;
+
+  level3_s = max(abs(band3_2), max(abs(band3_3), max(abs(band3_4), abs(band3_5))));
+  gain3_s = calc_band_gain(level3_s, 5, b3AtkStr, b3SusStr, b3ExpThresh, b3ExpRatio, b3ExpFloor);
+  band3_2 *= gain3_s; band3_3 *= gain3_s; band3_4 *= gain3_s; band3_5 *= gain3_s;
+
+  // Directional emphasis (surround channels)
+  dirEmphasis > 0 ? (
+    dir_mult_b1 = 1.0 + dirEmphasis * (1.0 - ratio_b1);
+    band1_2 *= dir_mult_b1; band1_3 *= dir_mult_b1;
+    band1_4 *= dir_mult_b1; band1_5 *= dir_mult_b1;
+    dir_mult_b2 = 1.0 + dirEmphasis * (1.0 - ratio_b2);
+    band2_2 *= dir_mult_b2; band2_3 *= dir_mult_b2;
+    band2_4 *= dir_mult_b2; band2_5 *= dir_mult_b2;
+    dir_mult_b3 = 1.0 + dirEmphasis * (1.0 - ratio_b3);
+    band3_2 *= dir_mult_b3; band3_3 *= dir_mult_b3;
+    band3_4 *= dir_mult_b3; band3_5 *= dir_mult_b3;
+  );
+
+) : (
+  // Fallback: single detection group (2ch or 4ch)
+  level1 = max(abs(band1_0), abs(band1_1));
+  num_ch >= 4 ? ( level1 = max(level1, max(abs(band1_2), abs(band1_3))); );
+  gain1 = calc_band_gain(level1, 0, b1AtkStr, b1SusStr, b1ExpThresh, b1ExpRatio, b1ExpFloor);
+  band1_0 *= gain1; band1_1 *= gain1;
+  num_ch >= 4 ? ( band1_2 *= gain1; band1_3 *= gain1; );
+
+  level2 = max(abs(band2_0), abs(band2_1));
+  num_ch >= 4 ? ( level2 = max(level2, max(abs(band2_2), abs(band2_3))); );
+  gain2 = calc_band_gain(level2, 1, b2AtkStr, b2SusStr, b2ExpThresh, b2ExpRatio, b2ExpFloor);
+  band2_0 *= gain2; band2_1 *= gain2;
+  num_ch >= 4 ? ( band2_2 *= gain2; band2_3 *= gain2; );
+
+  level3 = max(abs(band3_0), abs(band3_1));
+  num_ch >= 4 ? ( level3 = max(level3, max(abs(band3_2), abs(band3_3))); );
+  gain3 = calc_band_gain(level3, 2, b3AtkStr, b3SusStr, b3ExpThresh, b3ExpRatio, b3ExpFloor);
+  band3_0 *= gain3; band3_1 *= gain3;
+  num_ch >= 4 ? ( band3_2 *= gain3; band3_3 *= gain3; );
+);
+
+// === Step 9: Sum & Output ===
+wet0 = pass_low_0 + band1_0 + band2_0 + band3_0 + pass_high_0;
+wet1 = pass_low_1 + band1_1 + band2_1 + band3_1 + pass_high_1;
+wet0 *= out_gain_lin; wet1 *= out_gain_lin;
+spl0 = dry0 * (1 - mix) + wet0 * mix;
+spl1 = dry1 * (1 - mix) + wet1 * mix;
+
+num_ch >= 4 ? (
+  wet2 = pass_low_2 + band1_2 + band2_2 + band3_2 + pass_high_2;
+  wet3 = pass_low_3 + band1_3 + band2_3 + band3_3 + pass_high_3;
+  wet2 *= out_gain_lin; wet3 *= out_gain_lin;
+  spl2 = dry2 * (1 - mix) + wet2 * mix;
+  spl3 = dry3 * (1 - mix) + wet3 * mix;
+);
+num_ch >= 6 ? (
+  wet4 = pass_low_4 + band1_4 + band2_4 + band3_4 + pass_high_4;
+  wet5 = pass_low_5 + band1_5 + band2_5 + band3_5 + pass_high_5;
+  wet4 *= out_gain_lin; wet5 *= out_gain_lin;
+  spl4 = dry4 * (1 - mix) + wet4 * mix;
+  spl5 = dry5 * (1 - mix) + wet5 * mix;
+);
+num_ch >= 7 ? (
+  wet6 = pass_low_6 + band1_6 + band2_6 + band3_6 + pass_high_6;
+  wet6 *= out_gain_lin;
+  spl6 = dry6 * (1 - mix) + wet6 * mix;
+);
+
+@gfx 900 700
+
+// === Style Constants ===
+bg_r = 0.08; bg_g = 0.08; bg_b = 0.09;
+gold_r = 0.95; gold_g = 0.75; gold_b = 0.1;
+teal_r = 0.2;  teal_g = 0.8;  teal_b = 0.5;
+red_r = 0.9;  red_g = 0.3;  red_b = 0.2;
+atk_red_r = 0.7; atk_red_g = 0.12; atk_red_b = 0.08;
+card_r = 0.13; card_g = 0.13; card_b = 0.14;
+ma_r = 0.5;  ma_g = 0.5;  ma_b = 0.5;
+txt2_r = 0.6; txt2_g = 0.6; txt2_b = 0.6;
+brd_r = 0.2;  brd_g = 0.2;  brd_b = 0.2;
+trk_bg_r = 0.06; trk_bg_g = 0.06; trk_bg_b = 0.06;
+trk_brd_r = 0.2; trk_brd_g = 0.2; trk_brd_b = 0.2;
+amb_r = 0.85; amb_g = 0.55; amb_b = 0.15;
+bst_r = 0.15; bst_g = 0.75; bst_b = 0.45;
+
+gfx_setfont(2, "Arial", 11);
+
+// Layout
+lm = 10; rm = 10;
+draw_w = gfx_w - lm - rm;
+col_gap = 8;
+trk_h = 6; lbl_h = 10; sl_gap = 1; hdr_h = 14;
+sl_row = lbl_h + trk_h + sl_gap;
+sub_hdr_h = 12;
+
+// Clear
+gfx_set(bg_r, bg_g, bg_b, 1);
+gfx_x = 0; gfx_y = 0;
+gfx_rectto(gfx_w, gfx_h);
+
+// Red accent strip
+gfx_set(atk_red_r, atk_red_g, atk_red_b, 1);
+gfx_x = 0; gfx_y = 0;
+gfx_rectto(gfx_w, 3);
+
+cy = 5;
+
+// === FC SELF-SUPPRESSION ===
+gfx_setfont(2);
+gfx_set(amb_r, amb_g, amb_b, 1);
+gfx_x = lm; gfx_y = cy;
+gfx_drawstr("FC Self-Suppression");
+cy += hdr_h;
+
+sl_w3 = (draw_w - 2 * col_gap) / 3;
+
+// FC Sub Low
+sx = lm;
+gfx_set(amb_r, amb_g, amb_b, 0.9); gfx_x = sx; gfx_y = cy; gfx_drawstr("Low");
+sprintf(0, "%.2f", ckSubLow); gfx_measurestr(0, tw, th); gfx_x = sx + sl_w3 - tw; gfx_y = cy; gfx_drawstr(0);
+draw_hslider(sx, cy + lbl_h, sl_w3, trk_h, ckSubLow, 0, 5, amb_r, amb_g, amb_b, 0, 0);
+
+// FC Sub Mid
+sx = lm + sl_w3 + col_gap;
+gfx_set(amb_r, amb_g, amb_b, 0.9); gfx_x = sx; gfx_y = cy; gfx_drawstr("Mid");
+sprintf(0, "%.2f", ckSubMid); gfx_measurestr(0, tw, th); gfx_x = sx + sl_w3 - tw; gfx_y = cy; gfx_drawstr(0);
+draw_hslider(sx, cy + lbl_h, sl_w3, trk_h, ckSubMid, 0, 5, amb_r, amb_g, amb_b, 1, 0);
+
+// FC Sub High
+sx = lm + (sl_w3 + col_gap) * 2;
+gfx_set(amb_r, amb_g, amb_b, 0.9); gfx_x = sx; gfx_y = cy; gfx_drawstr("High");
+sprintf(0, "%.2f", ckSubHigh); gfx_measurestr(0, tw, th); gfx_x = sx + sl_w3 - tw; gfx_y = cy; gfx_drawstr(0);
+draw_hslider(sx, cy + lbl_h, sl_w3, trk_h, ckSubHigh, 0, 5, amb_r, amb_g, amb_b, 2, 0);
+
+cy += sl_row;
+
+// === SELF SOUND GATE ===
+gfx_set(amb_r, amb_g, amb_b, 1);
+gfx_x = lm; gfx_y = cy;
+gfx_drawstr("Self Sound Gate");
+cy += hdr_h;
+
+sl_w2 = (draw_w - col_gap) / 2;
+
+// Row 1: Threshold | Knee
+sx = lm;
+gfx_set(amb_r, amb_g, amb_b, 0.9); gfx_x = sx; gfx_y = cy; gfx_drawstr("Threshold");
+sprintf(0, "%.0f dBFS", ckThresh); gfx_measurestr(0, tw, th); gfx_x = sx + sl_w2 - tw; gfx_y = cy; gfx_drawstr(0);
+draw_hslider(sx, cy + lbl_h, sl_w2, trk_h, ckThresh, -60, 0, amb_r, amb_g, amb_b, 4, 0);
+
+sx = lm + sl_w2 + col_gap;
+gfx_set(amb_r, amb_g, amb_b, 0.9); gfx_x = sx; gfx_y = cy; gfx_drawstr("Knee");
+sprintf(0, "%.1f dB", ckKnee); gfx_measurestr(0, tw, th); gfx_x = sx + sl_w2 - tw; gfx_y = cy; gfx_drawstr(0);
+draw_hslider(sx, cy + lbl_h, sl_w2, trk_h, ckKnee, 0, 20, amb_r, amb_g, amb_b, 7, 0);
+
+cy += sl_row;
+
+// Row 2: Depth | Attack | Release
+sx = lm;
+gfx_set(amb_r, amb_g, amb_b, 0.9); gfx_x = sx; gfx_y = cy; gfx_drawstr("Depth");
+sprintf(0, "%.1f dB", ckDuck); gfx_measurestr(0, tw, th); gfx_x = sx + sl_w3 - tw; gfx_y = cy; gfx_drawstr(0);
+draw_hslider(sx, cy + lbl_h, sl_w3, trk_h, ckDuck, -60, 0, amb_r, amb_g, amb_b, 3, 0);
+
+sx = lm + sl_w3 + col_gap;
+gfx_set(amb_r, amb_g, amb_b, 0.9); gfx_x = sx; gfx_y = cy; gfx_drawstr("Attack");
+sprintf(0, "%.1f ms", ckAttack); gfx_measurestr(0, tw, th); gfx_x = sx + sl_w3 - tw; gfx_y = cy; gfx_drawstr(0);
+draw_hslider(sx, cy + lbl_h, sl_w3, trk_h, ckAttack, 0.1, 50, amb_r, amb_g, amb_b, 5, 0);
+
+sx = lm + (sl_w3 + col_gap) * 2;
+gfx_set(amb_r, amb_g, amb_b, 0.9); gfx_x = sx; gfx_y = cy; gfx_drawstr("Release");
+sprintf(0, "%.0f ms", ckRelease); gfx_measurestr(0, tw, th); gfx_x = sx + sl_w3 - tw; gfx_y = cy; gfx_drawstr(0);
+draw_hslider(sx, cy + lbl_h, sl_w3, trk_h, ckRelease, 10, 500, amb_r, amb_g, amb_b, 6, 0);
+
+cy += sl_row;
+
+// === ADAPTIVE EQ ===
+gfx_set(bst_r, bst_g, bst_b, 1);
+gfx_x = lm; gfx_y = cy;
+gfx_drawstr("Adaptive EQ");
+cy += hdr_h;
+
+// Row 1: Lo Gain | Lo Freq | Lo Q | Hi Gain | Hi Freq | Hi Q
+sl_w6 = (draw_w - 5 * col_gap) / 6;
+
+sx = lm;
+gfx_set(bst_r, bst_g, bst_b, 0.9); gfx_x = sx; gfx_y = cy; gfx_drawstr("Lo Gain");
+sprintf(0, "%.1f dB", boostLow); gfx_measurestr(0, tw, th); gfx_x = sx + sl_w6 - tw; gfx_y = cy; gfx_drawstr(0);
+draw_hslider(sx, cy + lbl_h, sl_w6, trk_h, boostLow, 0, 12, bst_r, bst_g, bst_b, 8, 0);
+
+sx = lm + (sl_w6 + col_gap);
+gfx_set(bst_r, bst_g, bst_b, 0.9); gfx_x = sx; gfx_y = cy; gfx_drawstr("Lo Freq");
+sprintf(0, "%d Hz", boostLowFreq); gfx_measurestr(0, tw, th); gfx_x = sx + sl_w6 - tw; gfx_y = cy; gfx_drawstr(0);
+draw_hslider(sx, cy + lbl_h, sl_w6, trk_h, boostLowFreq, 100, 800, bst_r, bst_g, bst_b, 9, 0);
+
+sx = lm + (sl_w6 + col_gap) * 2;
+gfx_set(bst_r, bst_g, bst_b, 0.9); gfx_x = sx; gfx_y = cy; gfx_drawstr("Lo Q");
+sprintf(0, "%.1f", boostLowQ); gfx_measurestr(0, tw, th); gfx_x = sx + sl_w6 - tw; gfx_y = cy; gfx_drawstr(0);
+draw_hslider(sx, cy + lbl_h, sl_w6, trk_h, boostLowQ, 0.3, 3.0, bst_r, bst_g, bst_b, 10, 0);
+
+sx = lm + (sl_w6 + col_gap) * 3;
+gfx_set(bst_r, bst_g, bst_b, 0.9); gfx_x = sx; gfx_y = cy; gfx_drawstr("Hi Gain");
+sprintf(0, "%.1f dB", boostHigh); gfx_measurestr(0, tw, th); gfx_x = sx + sl_w6 - tw; gfx_y = cy; gfx_drawstr(0);
+draw_hslider(sx, cy + lbl_h, sl_w6, trk_h, boostHigh, 0, 18, bst_r, bst_g, bst_b, 11, 0);
+
+sx = lm + (sl_w6 + col_gap) * 4;
+gfx_set(bst_r, bst_g, bst_b, 0.9); gfx_x = sx; gfx_y = cy; gfx_drawstr("Hi Freq");
+sprintf(0, "%d Hz", boostHighFreq); gfx_measurestr(0, tw, th); gfx_x = sx + sl_w6 - tw; gfx_y = cy; gfx_drawstr(0);
+draw_hslider(sx, cy + lbl_h, sl_w6, trk_h, boostHighFreq, 1000, 5000, bst_r, bst_g, bst_b, 12, 0);
+
+sx = lm + (sl_w6 + col_gap) * 5;
+gfx_set(bst_r, bst_g, bst_b, 0.9); gfx_x = sx; gfx_y = cy; gfx_drawstr("Hi Q");
+sprintf(0, "%.1f", boostHighQ); gfx_measurestr(0, tw, th); gfx_x = sx + sl_w6 - tw; gfx_y = cy; gfx_drawstr(0);
+draw_hslider(sx, cy + lbl_h, sl_w6, trk_h, boostHighQ, 0.3, 3.0, bst_r, bst_g, bst_b, 13, 0);
+
+cy += sl_row;
+
+// Row 2: Attack | Release | Loudness Gate
+sx = lm;
+gfx_set(bst_r, bst_g, bst_b, 0.9); gfx_x = sx; gfx_y = cy; gfx_drawstr("Attack");
+sprintf(0, "%.1f ms", boostAttack); gfx_measurestr(0, tw, th); gfx_x = sx + sl_w3 - tw; gfx_y = cy; gfx_drawstr(0);
+draw_hslider(sx, cy + lbl_h, sl_w3, trk_h, boostAttack, 0.5, 50, bst_r, bst_g, bst_b, 14, 0);
+
+sx = lm + sl_w3 + col_gap;
+gfx_set(bst_r, bst_g, bst_b, 0.9); gfx_x = sx; gfx_y = cy; gfx_drawstr("Release");
+sprintf(0, "%.0f ms", boostRelease); gfx_measurestr(0, tw, th); gfx_x = sx + sl_w3 - tw; gfx_y = cy; gfx_drawstr(0);
+draw_hslider(sx, cy + lbl_h, sl_w3, trk_h, boostRelease, 10, 500, bst_r, bst_g, bst_b, 15, 0);
+
+sx = lm + (sl_w3 + col_gap) * 2;
+gfx_set(bst_r, bst_g, bst_b, 0.9); gfx_x = sx; gfx_y = cy; gfx_drawstr("Loudness Gate");
+sprintf(0, "%.0f dBFS", boostRejectThresh); gfx_measurestr(0, tw, th); gfx_x = sx + sl_w3 - tw; gfx_y = cy; gfx_drawstr(0);
+draw_hslider(sx, cy + lbl_h, sl_w3, trk_h, boostRejectThresh, -40, 0, bst_r, bst_g, bst_b, 16, 0);
+
+cy += sl_row + 1;
+
+// Separator
+gfx_set(atk_red_r, atk_red_g, atk_red_b, 0.4);
+gfx_line(lm, cy, gfx_w - rm, cy);
+cy += 2;
+
+// =============================================
+// === BAND CONTROLS (3 columns) ===
+// =============================================
+col_w = (draw_w - 2 * col_gap) / 3;
+sl_wc = col_w - 8;  // slider width within column (4px pad each side)
+
+band_y = cy;
+band_labels_0 = "Low Band";
+band_labels_1 = "Mid Band";
+band_labels_2 = "High Band";
+
+// --- COLUMN 1: LOW BAND ---
+cx = lm + 4;
+cy = band_y;
+gfx_setfont(2); gfx_set(gold_r, gold_g, gold_b, 1);
+gfx_x = cx; gfx_y = cy; gfx_drawstr("Low Band");
+cy += hdr_h;
+
+// Attack Speed
+gfx_set(1, 1, 1, 0.9); gfx_x = cx; gfx_y = cy; gfx_drawstr("Attack Speed");
+sprintf(0, "%.2f", b1Attack); gfx_measurestr(0, tw, th); gfx_x = cx + sl_wc - tw; gfx_y = cy; gfx_drawstr(0);
+draw_hslider(cx, cy + lbl_h, sl_wc, trk_h, b1Attack, 0, 1, gold_r, gold_g, gold_b, 17, 0);
+cy += sl_row;
+// Sustain Speed
+gfx_set(1, 1, 1, 0.9); gfx_x = cx; gfx_y = cy; gfx_drawstr("Sustain Speed");
+sprintf(0, "%.2f", b1Sustain); gfx_measurestr(0, tw, th); gfx_x = cx + sl_wc - tw; gfx_y = cy; gfx_drawstr(0);
+draw_hslider(cx, cy + lbl_h, sl_wc, trk_h, b1Sustain, 0, 1, gold_r, gold_g, gold_b, 18, 0);
+cy += sl_row;
+// Surround sub-header
+gfx_set(gold_r, gold_g, gold_b, 0.6); gfx_x = cx; gfx_y = cy; gfx_drawstr("Surround"); cy += sub_hdr_h;
+// Surr Attack
+gfx_set(1, 1, 1, 0.9); gfx_x = cx; gfx_y = cy; gfx_drawstr("Attack");
+sprintf(0, "%+.2f", b1AtkStr); gfx_measurestr(0, tw, th); gfx_x = cx + sl_wc - tw; gfx_y = cy; gfx_drawstr(0);
+draw_hslider(cx, cy + lbl_h, sl_wc, trk_h, b1AtkStr, -1, 1, gold_r, gold_g, gold_b, 19, 1);
+cy += sl_row;
+// Surr Sustain
+gfx_set(1, 1, 1, 0.9); gfx_x = cx; gfx_y = cy; gfx_drawstr("Sustain");
+sprintf(0, "%+.2f", b1SusStr); gfx_measurestr(0, tw, th); gfx_x = cx + sl_wc - tw; gfx_y = cy; gfx_drawstr(0);
+draw_hslider(cx, cy + lbl_h, sl_wc, trk_h, b1SusStr, -1, 1, gold_r, gold_g, gold_b, 20, 1);
+cy += sl_row;
+// Front sub-header
+gfx_set(teal_r, teal_g, teal_b, 0.6); gfx_x = cx; gfx_y = cy; gfx_drawstr("Front"); cy += sub_hdr_h;
+// Front Attack
+gfx_set(1, 1, 1, 0.9); gfx_x = cx; gfx_y = cy; gfx_drawstr("Attack");
+sprintf(0, "%+.2f", fb1AtkStr); gfx_measurestr(0, tw, th); gfx_x = cx + sl_wc - tw; gfx_y = cy; gfx_drawstr(0);
+draw_hslider(cx, cy + lbl_h, sl_wc, trk_h, fb1AtkStr, -1, 1, teal_r, teal_g, teal_b, 21, 1);
+cy += sl_row;
+// Front Sustain
+gfx_set(1, 1, 1, 0.9); gfx_x = cx; gfx_y = cy; gfx_drawstr("Sustain");
+sprintf(0, "%+.2f", fb1SusStr); gfx_measurestr(0, tw, th); gfx_x = cx + sl_wc - tw; gfx_y = cy; gfx_drawstr(0);
+draw_hslider(cx, cy + lbl_h, sl_wc, trk_h, fb1SusStr, -1, 1, teal_r, teal_g, teal_b, 22, 1);
+cy += sl_row;
+// Expansion sub-header
+gfx_set(red_r, red_g, red_b, 0.6); gfx_x = cx; gfx_y = cy; gfx_drawstr("Expansion"); cy += sub_hdr_h;
+// Exp Threshold
+gfx_set(1, 1, 1, 0.9); gfx_x = cx; gfx_y = cy; gfx_drawstr("Threshold");
+sprintf(0, "%.0f dB", b1ExpThresh); gfx_measurestr(0, tw, th); gfx_x = cx + sl_wc - tw; gfx_y = cy; gfx_drawstr(0);
+draw_hslider(cx, cy + lbl_h, sl_wc, trk_h, b1ExpThresh, -60, 0, red_r, red_g, red_b, 23, 0);
+cy += sl_row;
+// Exp Ratio
+gfx_set(1, 1, 1, 0.9); gfx_x = cx; gfx_y = cy; gfx_drawstr("Ratio");
+sprintf(0, "%.1f", b1ExpRatio); gfx_measurestr(0, tw, th); gfx_x = cx + sl_wc - tw; gfx_y = cy; gfx_drawstr(0);
+draw_hslider(cx, cy + lbl_h, sl_wc, trk_h, b1ExpRatio, 1, 20, red_r, red_g, red_b, 24, 0);
+cy += sl_row;
+// Exp Floor
+gfx_set(1, 1, 1, 0.9); gfx_x = cx; gfx_y = cy; gfx_drawstr("Floor");
+sprintf(0, "%.0f dB", b1ExpFloor); gfx_measurestr(0, tw, th); gfx_x = cx + sl_wc - tw; gfx_y = cy; gfx_drawstr(0);
+draw_hslider(cx, cy + lbl_h, sl_wc, trk_h, b1ExpFloor, -80, -10, red_r, red_g, red_b, 25, 0);
+cy += sl_row;
+// CMR
+gfx_set(ma_r, ma_g, ma_b, 0.9); gfx_x = cx; gfx_y = cy; gfx_drawstr("CMR");
+sprintf(0, "%.2f", cmrLow); gfx_measurestr(0, tw, th); gfx_x = cx + sl_wc - tw; gfx_y = cy; gfx_drawstr(0);
+draw_hslider(cx, cy + lbl_h, sl_wc, trk_h, cmrLow, 0, 1, ma_r, ma_g, ma_b, 26, 0);
+cy += sl_row;
+col1_bot = cy;
+
+// --- COLUMN 2: MID BAND ---
+cx = lm + col_w + col_gap + 4;
+cy = band_y;
+gfx_setfont(2); gfx_set(gold_r, gold_g, gold_b, 1);
+gfx_x = cx; gfx_y = cy; gfx_drawstr("Mid Band");
+cy += hdr_h;
+gfx_setfont(2);
+
+gfx_set(1, 1, 1, 0.9); gfx_x = cx; gfx_y = cy; gfx_drawstr("Attack Speed");
+sprintf(0, "%.2f", b2Attack); gfx_measurestr(0, tw, th); gfx_x = cx + sl_wc - tw; gfx_y = cy; gfx_drawstr(0);
+draw_hslider(cx, cy + lbl_h, sl_wc, trk_h, b2Attack, 0, 1, gold_r, gold_g, gold_b, 27, 0);
+cy += sl_row;
+gfx_set(1, 1, 1, 0.9); gfx_x = cx; gfx_y = cy; gfx_drawstr("Sustain Speed");
+sprintf(0, "%.2f", b2Sustain); gfx_measurestr(0, tw, th); gfx_x = cx + sl_wc - tw; gfx_y = cy; gfx_drawstr(0);
+draw_hslider(cx, cy + lbl_h, sl_wc, trk_h, b2Sustain, 0, 1, gold_r, gold_g, gold_b, 28, 0);
+cy += sl_row;
+gfx_set(gold_r, gold_g, gold_b, 0.6); gfx_x = cx; gfx_y = cy; gfx_drawstr("Surround"); cy += sub_hdr_h;
+gfx_set(1, 1, 1, 0.9); gfx_x = cx; gfx_y = cy; gfx_drawstr("Attack");
+sprintf(0, "%+.2f", b2AtkStr); gfx_measurestr(0, tw, th); gfx_x = cx + sl_wc - tw; gfx_y = cy; gfx_drawstr(0);
+draw_hslider(cx, cy + lbl_h, sl_wc, trk_h, b2AtkStr, -1, 1, gold_r, gold_g, gold_b, 29, 1);
+cy += sl_row;
+gfx_set(1, 1, 1, 0.9); gfx_x = cx; gfx_y = cy; gfx_drawstr("Sustain");
+sprintf(0, "%+.2f", b2SusStr); gfx_measurestr(0, tw, th); gfx_x = cx + sl_wc - tw; gfx_y = cy; gfx_drawstr(0);
+draw_hslider(cx, cy + lbl_h, sl_wc, trk_h, b2SusStr, -1, 1, gold_r, gold_g, gold_b, 30, 1);
+cy += sl_row;
+gfx_set(teal_r, teal_g, teal_b, 0.6); gfx_x = cx; gfx_y = cy; gfx_drawstr("Front"); cy += sub_hdr_h;
+gfx_set(1, 1, 1, 0.9); gfx_x = cx; gfx_y = cy; gfx_drawstr("Attack");
+sprintf(0, "%+.2f", fb2AtkStr); gfx_measurestr(0, tw, th); gfx_x = cx + sl_wc - tw; gfx_y = cy; gfx_drawstr(0);
+draw_hslider(cx, cy + lbl_h, sl_wc, trk_h, fb2AtkStr, -1, 1, teal_r, teal_g, teal_b, 31, 1);
+cy += sl_row;
+gfx_set(1, 1, 1, 0.9); gfx_x = cx; gfx_y = cy; gfx_drawstr("Sustain");
+sprintf(0, "%+.2f", fb2SusStr); gfx_measurestr(0, tw, th); gfx_x = cx + sl_wc - tw; gfx_y = cy; gfx_drawstr(0);
+draw_hslider(cx, cy + lbl_h, sl_wc, trk_h, fb2SusStr, -1, 1, teal_r, teal_g, teal_b, 32, 1);
+cy += sl_row;
+gfx_set(red_r, red_g, red_b, 0.6); gfx_x = cx; gfx_y = cy; gfx_drawstr("Expansion"); cy += sub_hdr_h;
+gfx_set(1, 1, 1, 0.9); gfx_x = cx; gfx_y = cy; gfx_drawstr("Threshold");
+sprintf(0, "%.0f dB", b2ExpThresh); gfx_measurestr(0, tw, th); gfx_x = cx + sl_wc - tw; gfx_y = cy; gfx_drawstr(0);
+draw_hslider(cx, cy + lbl_h, sl_wc, trk_h, b2ExpThresh, -60, 0, red_r, red_g, red_b, 33, 0);
+cy += sl_row;
+gfx_set(1, 1, 1, 0.9); gfx_x = cx; gfx_y = cy; gfx_drawstr("Ratio");
+sprintf(0, "%.1f", b2ExpRatio); gfx_measurestr(0, tw, th); gfx_x = cx + sl_wc - tw; gfx_y = cy; gfx_drawstr(0);
+draw_hslider(cx, cy + lbl_h, sl_wc, trk_h, b2ExpRatio, 1, 20, red_r, red_g, red_b, 34, 0);
+cy += sl_row;
+gfx_set(1, 1, 1, 0.9); gfx_x = cx; gfx_y = cy; gfx_drawstr("Floor");
+sprintf(0, "%.0f dB", b2ExpFloor); gfx_measurestr(0, tw, th); gfx_x = cx + sl_wc - tw; gfx_y = cy; gfx_drawstr(0);
+draw_hslider(cx, cy + lbl_h, sl_wc, trk_h, b2ExpFloor, -80, -10, red_r, red_g, red_b, 35, 0);
+cy += sl_row;
+gfx_set(ma_r, ma_g, ma_b, 0.9); gfx_x = cx; gfx_y = cy; gfx_drawstr("CMR");
+sprintf(0, "%.2f", cmrMid); gfx_measurestr(0, tw, th); gfx_x = cx + sl_wc - tw; gfx_y = cy; gfx_drawstr(0);
+draw_hslider(cx, cy + lbl_h, sl_wc, trk_h, cmrMid, 0, 1, ma_r, ma_g, ma_b, 36, 0);
+cy += sl_row;
+
+// --- COLUMN 3: HIGH BAND ---
+cx = lm + (col_w + col_gap) * 2 + 4;
+cy = band_y;
+gfx_setfont(2); gfx_set(gold_r, gold_g, gold_b, 1);
+gfx_x = cx; gfx_y = cy; gfx_drawstr("High Band");
+cy += hdr_h;
+gfx_setfont(2);
+
+gfx_set(1, 1, 1, 0.9); gfx_x = cx; gfx_y = cy; gfx_drawstr("Attack Speed");
+sprintf(0, "%.2f", b3Attack); gfx_measurestr(0, tw, th); gfx_x = cx + sl_wc - tw; gfx_y = cy; gfx_drawstr(0);
+draw_hslider(cx, cy + lbl_h, sl_wc, trk_h, b3Attack, 0, 1, gold_r, gold_g, gold_b, 37, 0);
+cy += sl_row;
+gfx_set(1, 1, 1, 0.9); gfx_x = cx; gfx_y = cy; gfx_drawstr("Sustain Speed");
+sprintf(0, "%.2f", b3Sustain); gfx_measurestr(0, tw, th); gfx_x = cx + sl_wc - tw; gfx_y = cy; gfx_drawstr(0);
+draw_hslider(cx, cy + lbl_h, sl_wc, trk_h, b3Sustain, 0, 1, gold_r, gold_g, gold_b, 38, 0);
+cy += sl_row;
+gfx_set(gold_r, gold_g, gold_b, 0.6); gfx_x = cx; gfx_y = cy; gfx_drawstr("Surround"); cy += sub_hdr_h;
+gfx_set(1, 1, 1, 0.9); gfx_x = cx; gfx_y = cy; gfx_drawstr("Attack");
+sprintf(0, "%+.2f", b3AtkStr); gfx_measurestr(0, tw, th); gfx_x = cx + sl_wc - tw; gfx_y = cy; gfx_drawstr(0);
+draw_hslider(cx, cy + lbl_h, sl_wc, trk_h, b3AtkStr, -1, 1, gold_r, gold_g, gold_b, 39, 1);
+cy += sl_row;
+gfx_set(1, 1, 1, 0.9); gfx_x = cx; gfx_y = cy; gfx_drawstr("Sustain");
+sprintf(0, "%+.2f", b3SusStr); gfx_measurestr(0, tw, th); gfx_x = cx + sl_wc - tw; gfx_y = cy; gfx_drawstr(0);
+draw_hslider(cx, cy + lbl_h, sl_wc, trk_h, b3SusStr, -1, 1, gold_r, gold_g, gold_b, 40, 1);
+cy += sl_row;
+gfx_set(teal_r, teal_g, teal_b, 0.6); gfx_x = cx; gfx_y = cy; gfx_drawstr("Front"); cy += sub_hdr_h;
+gfx_set(1, 1, 1, 0.9); gfx_x = cx; gfx_y = cy; gfx_drawstr("Attack");
+sprintf(0, "%+.2f", fb3AtkStr); gfx_measurestr(0, tw, th); gfx_x = cx + sl_wc - tw; gfx_y = cy; gfx_drawstr(0);
+draw_hslider(cx, cy + lbl_h, sl_wc, trk_h, fb3AtkStr, -1, 1, teal_r, teal_g, teal_b, 41, 1);
+cy += sl_row;
+gfx_set(1, 1, 1, 0.9); gfx_x = cx; gfx_y = cy; gfx_drawstr("Sustain");
+sprintf(0, "%+.2f", fb3SusStr); gfx_measurestr(0, tw, th); gfx_x = cx + sl_wc - tw; gfx_y = cy; gfx_drawstr(0);
+draw_hslider(cx, cy + lbl_h, sl_wc, trk_h, fb3SusStr, -1, 1, teal_r, teal_g, teal_b, 42, 1);
+cy += sl_row;
+gfx_set(red_r, red_g, red_b, 0.6); gfx_x = cx; gfx_y = cy; gfx_drawstr("Expansion"); cy += sub_hdr_h;
+gfx_set(1, 1, 1, 0.9); gfx_x = cx; gfx_y = cy; gfx_drawstr("Threshold");
+sprintf(0, "%.0f dB", b3ExpThresh); gfx_measurestr(0, tw, th); gfx_x = cx + sl_wc - tw; gfx_y = cy; gfx_drawstr(0);
+draw_hslider(cx, cy + lbl_h, sl_wc, trk_h, b3ExpThresh, -60, 0, red_r, red_g, red_b, 43, 0);
+cy += sl_row;
+gfx_set(1, 1, 1, 0.9); gfx_x = cx; gfx_y = cy; gfx_drawstr("Ratio");
+sprintf(0, "%.1f", b3ExpRatio); gfx_measurestr(0, tw, th); gfx_x = cx + sl_wc - tw; gfx_y = cy; gfx_drawstr(0);
+draw_hslider(cx, cy + lbl_h, sl_wc, trk_h, b3ExpRatio, 1, 20, red_r, red_g, red_b, 44, 0);
+cy += sl_row;
+gfx_set(1, 1, 1, 0.9); gfx_x = cx; gfx_y = cy; gfx_drawstr("Floor");
+sprintf(0, "%.0f dB", b3ExpFloor); gfx_measurestr(0, tw, th); gfx_x = cx + sl_wc - tw; gfx_y = cy; gfx_drawstr(0);
+draw_hslider(cx, cy + lbl_h, sl_wc, trk_h, b3ExpFloor, -80, -10, red_r, red_g, red_b, 45, 0);
+cy += sl_row;
+gfx_set(ma_r, ma_g, ma_b, 0.9); gfx_x = cx; gfx_y = cy; gfx_drawstr("CMR");
+sprintf(0, "%.2f", cmrHigh); gfx_measurestr(0, tw, th); gfx_x = cx + sl_wc - tw; gfx_y = cy; gfx_drawstr(0);
+draw_hslider(cx, cy + lbl_h, sl_wc, trk_h, cmrHigh, 0, 1, ma_r, ma_g, ma_b, 46, 0);
+cy += sl_row;
+
+// Use tallest column bottom
+cy = max(cy, col1_bot) + 1;
+
+// Separator
+gfx_set(atk_red_r, atk_red_g, atk_red_b, 0.4);
+gfx_line(lm, cy, gfx_w - rm, cy);
+cy += 2;
+
+// === MASTER ===
+gfx_setfont(2);
+gfx_set(ma_r, ma_g, ma_b, 1);
+gfx_x = lm; gfx_y = cy;
+gfx_drawstr("Master");
+cy += hdr_h;
+
+sl_w4 = (draw_w - 3 * col_gap) / 4;
+
+// Row 1: Crossover frequencies
+sx = lm;
+gfx_set(gold_r, gold_g, gold_b, 0.9); gfx_x = sx; gfx_y = cy; gfx_drawstr("Low Cut");
+sprintf(0, "%d Hz", lowCut); gfx_measurestr(0, tw, th); gfx_x = sx + sl_w4 - tw; gfx_y = cy; gfx_drawstr(0);
+draw_hslider(sx, cy + lbl_h, sl_w4, trk_h, lowCut, 20, 2000, gold_r, gold_g, gold_b, 47, 0);
+
+sx = lm + sl_w4 + col_gap;
+gfx_set(gold_r, gold_g, gold_b, 0.9); gfx_x = sx; gfx_y = cy; gfx_drawstr("Low/Mid");
+sprintf(0, "%d Hz", xover1); gfx_measurestr(0, tw, th); gfx_x = sx + sl_w4 - tw; gfx_y = cy; gfx_drawstr(0);
+draw_hslider(sx, cy + lbl_h, sl_w4, trk_h, xover1, 20, 8000, gold_r, gold_g, gold_b, 49, 0);
+
+sx = lm + (sl_w4 + col_gap) * 2;
+gfx_set(gold_r, gold_g, gold_b, 0.9); gfx_x = sx; gfx_y = cy; gfx_drawstr("Mid/High");
+sprintf(0, "%d Hz", xover2); gfx_measurestr(0, tw, th); gfx_x = sx + sl_w4 - tw; gfx_y = cy; gfx_drawstr(0);
+draw_hslider(sx, cy + lbl_h, sl_w4, trk_h, xover2, 100, 20000, gold_r, gold_g, gold_b, 50, 0);
+
+sx = lm + (sl_w4 + col_gap) * 3;
+gfx_set(gold_r, gold_g, gold_b, 0.9); gfx_x = sx; gfx_y = cy; gfx_drawstr("High Cut");
+sprintf(0, "%d Hz", highCut); gfx_measurestr(0, tw, th); gfx_x = sx + sl_w4 - tw; gfx_y = cy; gfx_drawstr(0);
+draw_hslider(sx, cy + lbl_h, sl_w4, trk_h, highCut, 1000, 20000, gold_r, gold_g, gold_b, 48, 0);
+
+cy += sl_row;
+
+// Row 2: Dir Emph | Self Sup | Gain | Smooth | Dry/Wet
+sl_w5 = (draw_w - 4 * col_gap) / 5;
+
+sx = lm;
+gfx_set(ma_r, ma_g, ma_b, 0.9); gfx_x = sx; gfx_y = cy; gfx_drawstr("Dir Emph");
+sprintf(0, "%.2f", dirEmphasis); gfx_measurestr(0, tw, th); gfx_x = sx + sl_w5 - tw; gfx_y = cy; gfx_drawstr(0);
+draw_hslider(sx, cy + lbl_h, sl_w5, trk_h, dirEmphasis, 0, 1, ma_r, ma_g, ma_b, 51, 0);
+
+sx = lm + sl_w5 + col_gap;
+gfx_set(ma_r, ma_g, ma_b, 0.9); gfx_x = sx; gfx_y = cy; gfx_drawstr("Self Sup");
+sprintf(0, "%.2f", b1SelfSup); gfx_measurestr(0, tw, th); gfx_x = sx + sl_w5 - tw; gfx_y = cy; gfx_drawstr(0);
+draw_hslider(sx, cy + lbl_h, sl_w5, trk_h, b1SelfSup, 0, 1, ma_r, ma_g, ma_b, 52, 0);
+
+sx = lm + (sl_w5 + col_gap) * 2;
+gfx_set(ma_r, ma_g, ma_b, 0.9); gfx_x = sx; gfx_y = cy; gfx_drawstr("Gain");
+sprintf(0, "%+.1f dB", outGain); gfx_measurestr(0, tw, th); gfx_x = sx + sl_w5 - tw; gfx_y = cy; gfx_drawstr(0);
+draw_hslider(sx, cy + lbl_h, sl_w5, trk_h, outGain, -20, 20, ma_r, ma_g, ma_b, 53, 1);
+
+sx = lm + (sl_w5 + col_gap) * 3;
+gfx_set(ma_r, ma_g, ma_b, 0.9); gfx_x = sx; gfx_y = cy; gfx_drawstr("Smooth");
+sprintf(0, "%.2f", gainSmooth); gfx_measurestr(0, tw, th); gfx_x = sx + sl_w5 - tw; gfx_y = cy; gfx_drawstr(0);
+draw_hslider(sx, cy + lbl_h, sl_w5, trk_h, gainSmooth, 0, 1, ma_r, ma_g, ma_b, 54, 0);
+
+sx = lm + (sl_w5 + col_gap) * 4;
+gfx_set(ma_r, ma_g, ma_b, 0.9); gfx_x = sx; gfx_y = cy; gfx_drawstr("Dry/Wet");
+sprintf(0, "%.2f", mix); gfx_measurestr(0, tw, th); gfx_x = sx + sl_w5 - tw; gfx_y = cy; gfx_drawstr(0);
+draw_hslider(sx, cy + lbl_h, sl_w5, trk_h, mix, 0, 1, ma_r, ma_g, ma_b, 55, 0);
+
+cy += sl_row;
+
+// Row 3: LFE sidechain
+sx = lm;
+gfx_set(ma_r, ma_g, ma_b, 0.9); gfx_x = sx; gfx_y = cy; gfx_drawstr("LFE Depth");
+sprintf(0, "%.2f", lfeModDepth); gfx_measurestr(0, tw, th); gfx_x = sx + sl_w3 - tw; gfx_y = cy; gfx_drawstr(0);
+draw_hslider(sx, cy + lbl_h, sl_w3, trk_h, lfeModDepth, 0, 1, ma_r, ma_g, ma_b, 56, 0);
+
+sx = lm + sl_w3 + col_gap;
+gfx_set(ma_r, ma_g, ma_b, 0.9); gfx_x = sx; gfx_y = cy; gfx_drawstr("LFE Atk");
+sprintf(0, "%d ms", lfeAttack); gfx_measurestr(0, tw, th); gfx_x = sx + sl_w3 - tw; gfx_y = cy; gfx_drawstr(0);
+draw_hslider(sx, cy + lbl_h, sl_w3, trk_h, lfeAttack, 1, 500, ma_r, ma_g, ma_b, 57, 0);
+
+sx = lm + (sl_w3 + col_gap) * 2;
+gfx_set(ma_r, ma_g, ma_b, 0.9); gfx_x = sx; gfx_y = cy; gfx_drawstr("LFE Rel");
+sprintf(0, "%d ms", lfeRelease); gfx_measurestr(0, tw, th); gfx_x = sx + sl_w3 - tw; gfx_y = cy; gfx_drawstr(0);
+draw_hslider(sx, cy + lbl_h, sl_w3, trk_h, lfeRelease, 50, 2000, ma_r, ma_g, ma_b, 58, 0);
+
+cy += sl_row;
+
+// =============================================
+// === MOUSE HANDLING ===
+// =============================================
+
+mouse_cap & 1 ? (
+  DRAG_STATE[0] == 0 ? (
+    si = 0;
+    while (si < 59 && DRAG_STATE[0] == 0) (
+      sr = SLIDER_RECTS + si * 4;
+      mouse_x >= sr[0] && mouse_x <= sr[0] + sr[2] &&
+      mouse_y >= sr[1] && mouse_y <= sr[1] + sr[3] ? (
+        DRAG_STATE[0] = si + 1;
+      );
+      si += 1;
+    );
+  );
+
+  DRAG_STATE[0] > 0 ? (
+    si = DRAG_STATE[0] - 1;
+    sr = SLIDER_RECTS + si * 4;
+
+    (mouse_cap & 8) ? (
+      fine_delta = (mouse_x - LAST_MOUSE_X[0]) * 0.1;
+      // cur_norm: map current slider value to 0..1
+      si == 0  ? cur_norm = ckSubLow / 5.0 :
+      si == 1  ? cur_norm = ckSubMid / 5.0 :
+      si == 2  ? cur_norm = ckSubHigh / 5.0 :
+      si == 3  ? cur_norm = (ckDuck + 60) / 60 :
+      si == 4  ? cur_norm = (ckThresh + 60) / 60 :
+      si == 5  ? cur_norm = (ckAttack - 0.1) / 49.9 :
+      si == 6  ? cur_norm = (ckRelease - 10) / 490 :
+      si == 7  ? cur_norm = ckKnee / 20 :
+      si == 8  ? cur_norm = boostLow / 12 :
+      si == 9  ? cur_norm = (boostLowFreq - 100) / 700 :
+      si == 10 ? cur_norm = (boostLowQ - 0.3) / 2.7 :
+      si == 11 ? cur_norm = boostHigh / 18 :
+      si == 12 ? cur_norm = (boostHighFreq - 1000) / 4000 :
+      si == 13 ? cur_norm = (boostHighQ - 0.3) / 2.7 :
+      si == 14 ? cur_norm = (boostAttack - 0.5) / 49.5 :
+      si == 15 ? cur_norm = (boostRelease - 10) / 490 :
+      si == 16 ? cur_norm = (boostRejectThresh + 40) / 40 :
+      si == 17 ? cur_norm = b1Attack :
+      si == 18 ? cur_norm = b1Sustain :
+      si == 19 ? cur_norm = (b1AtkStr + 1) * 0.5 :
+      si == 20 ? cur_norm = (b1SusStr + 1) * 0.5 :
+      si == 21 ? cur_norm = (fb1AtkStr + 1) * 0.5 :
+      si == 22 ? cur_norm = (fb1SusStr + 1) * 0.5 :
+      si == 23 ? cur_norm = (b1ExpThresh + 60) / 60 :
+      si == 24 ? cur_norm = (b1ExpRatio - 1) / 19 :
+      si == 25 ? cur_norm = (b1ExpFloor + 80) / 70 :
+      si == 26 ? cur_norm = cmrLow :
+      si == 27 ? cur_norm = b2Attack :
+      si == 28 ? cur_norm = b2Sustain :
+      si == 29 ? cur_norm = (b2AtkStr + 1) * 0.5 :
+      si == 30 ? cur_norm = (b2SusStr + 1) * 0.5 :
+      si == 31 ? cur_norm = (fb2AtkStr + 1) * 0.5 :
+      si == 32 ? cur_norm = (fb2SusStr + 1) * 0.5 :
+      si == 33 ? cur_norm = (b2ExpThresh + 60) / 60 :
+      si == 34 ? cur_norm = (b2ExpRatio - 1) / 19 :
+      si == 35 ? cur_norm = (b2ExpFloor + 80) / 70 :
+      si == 36 ? cur_norm = cmrMid :
+      si == 37 ? cur_norm = b3Attack :
+      si == 38 ? cur_norm = b3Sustain :
+      si == 39 ? cur_norm = (b3AtkStr + 1) * 0.5 :
+      si == 40 ? cur_norm = (b3SusStr + 1) * 0.5 :
+      si == 41 ? cur_norm = (fb3AtkStr + 1) * 0.5 :
+      si == 42 ? cur_norm = (fb3SusStr + 1) * 0.5 :
+      si == 43 ? cur_norm = (b3ExpThresh + 60) / 60 :
+      si == 44 ? cur_norm = (b3ExpRatio - 1) / 19 :
+      si == 45 ? cur_norm = (b3ExpFloor + 80) / 70 :
+      si == 46 ? cur_norm = cmrHigh :
+      si == 47 ? cur_norm = (lowCut - 20) / 1980 :
+      si == 48 ? cur_norm = (highCut - 1000) / 19000 :
+      si == 49 ? cur_norm = (xover1 - 20) / 7980 :
+      si == 50 ? cur_norm = (xover2 - 100) / 19900 :
+      si == 51 ? cur_norm = dirEmphasis :
+      si == 52 ? cur_norm = b1SelfSup :
+      si == 53 ? cur_norm = (outGain + 20) / 40 :
+      si == 54 ? cur_norm = gainSmooth :
+      si == 55 ? cur_norm = mix :
+      si == 56 ? cur_norm = lfeModDepth :
+      si == 57 ? cur_norm = (lfeAttack - 1) / 499 :
+      si == 58 ? cur_norm = (lfeRelease - 50) / 1950;
+      norm = max(0, min(1, cur_norm + fine_delta / sr[2]));
+    ) : (
+      norm = max(0, min(1, (mouse_x - sr[0]) / sr[2]));
+    );
+
+    // Assign value + automate
+    si == 0  ? ( ckSubLow = norm * 5.0;           slider_automate(slider5); ) :
+    si == 1  ? ( ckSubMid = norm * 5.0;           slider_automate(slider6); ) :
+    si == 2  ? ( ckSubHigh = norm * 5.0;          slider_automate(slider7); ) :
+    si == 3  ? ( ckDuck = -60 + norm * 60;        slider_automate(slider8); ) :
+    si == 4  ? ( ckThresh = -60 + norm * 60;      slider_automate(slider9); ) :
+    si == 5  ? ( ckAttack = 0.1 + norm * 49.9;    slider_automate(slider10); ) :
+    si == 6  ? ( ckRelease = 10 + norm * 490;     slider_automate(slider11); ) :
+    si == 7  ? ( ckKnee = norm * 20;              slider_automate(slider12); ) :
+    si == 8  ? ( boostLow = norm * 12;            slider_automate(slider13); ) :
+    si == 9  ? ( boostLowFreq = 100 + norm * 700; slider_automate(slider14); ) :
+    si == 10 ? ( boostLowQ = 0.3 + norm * 2.7;   slider_automate(slider15); ) :
+    si == 11 ? ( boostHigh = norm * 18;           slider_automate(slider16); ) :
+    si == 12 ? ( boostHighFreq = 1000 + norm * 4000; slider_automate(slider17); ) :
+    si == 13 ? ( boostHighQ = 0.3 + norm * 2.7;  slider_automate(slider18); ) :
+    si == 14 ? ( boostAttack = 0.5 + norm * 49.5; slider_automate(slider19); ) :
+    si == 15 ? ( boostRelease = 10 + norm * 490;  slider_automate(slider20); ) :
+    si == 16 ? ( boostRejectThresh = -40 + norm * 40; slider_automate(slider21); ) :
+    si == 17 ? ( b1Attack = norm;                  slider_automate(slider22); ) :
+    si == 18 ? ( b1Sustain = norm;                 slider_automate(slider23); ) :
+    si == 19 ? ( b1AtkStr = -1 + norm * 2;        slider_automate(slider24); ) :
+    si == 20 ? ( b1SusStr = -1 + norm * 2;        slider_automate(slider25); ) :
+    si == 21 ? ( fb1AtkStr = -1 + norm * 2;       slider_automate(slider26); ) :
+    si == 22 ? ( fb1SusStr = -1 + norm * 2;       slider_automate(slider27); ) :
+    si == 23 ? ( b1ExpThresh = -60 + norm * 60;   slider_automate(slider40); ) :
+    si == 24 ? ( b1ExpRatio = 1 + norm * 19;      slider_automate(slider41); ) :
+    si == 25 ? ( b1ExpFloor = -80 + norm * 70;    slider_automate(slider42); ) :
+    si == 26 ? ( cmrLow = norm;                    slider_automate(slider49); ) :
+    si == 27 ? ( b2Attack = norm;                  slider_automate(slider28); ) :
+    si == 28 ? ( b2Sustain = norm;                 slider_automate(slider29); ) :
+    si == 29 ? ( b2AtkStr = -1 + norm * 2;        slider_automate(slider30); ) :
+    si == 30 ? ( b2SusStr = -1 + norm * 2;        slider_automate(slider31); ) :
+    si == 31 ? ( fb2AtkStr = -1 + norm * 2;       slider_automate(slider32); ) :
+    si == 32 ? ( fb2SusStr = -1 + norm * 2;       slider_automate(slider33); ) :
+    si == 33 ? ( b2ExpThresh = -60 + norm * 60;   slider_automate(slider43); ) :
+    si == 34 ? ( b2ExpRatio = 1 + norm * 19;      slider_automate(slider44); ) :
+    si == 35 ? ( b2ExpFloor = -80 + norm * 70;    slider_automate(slider45); ) :
+    si == 36 ? ( cmrMid = norm;                    slider_automate(slider50); ) :
+    si == 37 ? ( b3Attack = norm;                  slider_automate(slider34); ) :
+    si == 38 ? ( b3Sustain = norm;                 slider_automate(slider35); ) :
+    si == 39 ? ( b3AtkStr = -1 + norm * 2;        slider_automate(slider36); ) :
+    si == 40 ? ( b3SusStr = -1 + norm * 2;        slider_automate(slider37); ) :
+    si == 41 ? ( fb3AtkStr = -1 + norm * 2;       slider_automate(slider38); ) :
+    si == 42 ? ( fb3SusStr = -1 + norm * 2;       slider_automate(slider39); ) :
+    si == 43 ? ( b3ExpThresh = -60 + norm * 60;   slider_automate(slider46); ) :
+    si == 44 ? ( b3ExpRatio = 1 + norm * 19;      slider_automate(slider47); ) :
+    si == 45 ? ( b3ExpFloor = -80 + norm * 70;    slider_automate(slider48); ) :
+    si == 46 ? ( cmrHigh = norm;                   slider_automate(slider51); ) :
+    si == 47 ? ( lowCut = 20 + norm * 1980;        slider_automate(slider1); ) :
+    si == 48 ? ( highCut = 1000 + norm * 19000;    slider_automate(slider2); ) :
+    si == 49 ? ( xover1 = 20 + norm * 7980;        slider_automate(slider3); ) :
+    si == 50 ? ( xover2 = 100 + norm * 19900;      slider_automate(slider4); ) :
+    si == 51 ? ( dirEmphasis = norm;               slider_automate(slider52); ) :
+    si == 52 ? ( b1SelfSup = norm;                 slider_automate(slider53); ) :
+    si == 53 ? ( outGain = -20 + norm * 40;        slider_automate(slider54); ) :
+    si == 54 ? ( gainSmooth = norm;                slider_automate(slider55); ) :
+    si == 55 ? ( mix = norm;                       slider_automate(slider56); ) :
+    si == 56 ? ( lfeModDepth = norm;               slider_automate(slider57); ) :
+    si == 57 ? ( lfeAttack = 1 + norm * 499;       slider_automate(slider58); ) :
+    si == 58 ? ( lfeRelease = 50 + norm * 1950;    slider_automate(slider59); );
+
+    // Derived values
+    out_gain_lin = exp(outGain / DB_K);
+
+    // Crossover coefficient recalculation on drag
+    (si >= 47 && si <= 50) ? (
+      xover1 = max(xover1, lowCut + 1);
+      xover2 = max(xover2, xover1 + 1);
+      highCut = max(highCut, xover2 + 1);
+      xover2 = min(xover2, highCut - 1);
+      xover1 = min(xover1, xover2 - 1);
+      lowCut = min(lowCut, xover1 - 1);
+      calc_biquad_lp(BIQUAD_COEFF,      lowCut);
+      calc_biquad_hp(BIQUAD_COEFF + 5,  lowCut);
+      calc_biquad_lp(BIQUAD_COEFF + 10, xover1);
+      calc_biquad_hp(BIQUAD_COEFF + 15, xover1);
+      calc_biquad_lp(BIQUAD_COEFF + 20, xover2);
+      calc_biquad_hp(BIQUAD_COEFF + 25, xover2);
+      calc_biquad_lp(BIQUAD_COEFF + 30, highCut);
+      calc_biquad_hp(BIQUAD_COEFF + 35, highCut);
+    );
+
+    // Boost EQ coefficient recalculation on drag
+    (si >= 8 && si <= 13) ? (
+      boostLow > 0 ? calc_peaking_eq(BOOST_LOW_COEFF, boostLowFreq, boostLow, boostLowQ);
+      boostHigh > 0 ? calc_peaking_eq(BOOST_HI_COEFF, boostHighFreq, boostHigh, boostHighQ);
+    );
+  );
+) : (
+  DRAG_STATE[0] = 0;
+);
+
+LAST_MOUSE_X[0] = mouse_x;
+
+// === MOUSE WHEEL ===
+mouse_wheel != 0 ? (
+  mw_handled = 0;
+  si = 0;
+  while (si < 59 && mw_handled == 0) (
+    sr = SLIDER_RECTS + si * 4;
+    mouse_x >= sr[0] && mouse_x <= sr[0] + sr[2] &&
+    mouse_y >= sr[1] && mouse_y <= sr[1] + sr[3] ? (
+      // Default step
+      si <= 2 ? ( mw_step = 0.05; ) :
+      si <= 7 ? ( mw_step = 0.5; ) :
+      si == 8 || si == 11 ? ( mw_step = 0.5; ) :
+      si == 9  ? ( mw_step = 10; ) :
+      si == 10 || si == 13 ? ( mw_step = 0.1; ) :
+      si == 12 ? ( mw_step = 100; ) :
+      si == 14 ? ( mw_step = 0.5; ) :
+      si == 15 ? ( mw_step = 1; ) :
+      si == 16 ? ( mw_step = 0.5; ) :
+      si >= 17 && si <= 22 ? ( mw_step = 0.01; ) :
+      si >= 23 && si <= 25 ? ( mw_step = 0.5; ) :
+      si == 26 ? ( mw_step = 0.01; ) :
+      si >= 27 && si <= 32 ? ( mw_step = 0.01; ) :
+      si >= 33 && si <= 35 ? ( mw_step = 0.5; ) :
+      si == 36 ? ( mw_step = 0.01; ) :
+      si >= 37 && si <= 42 ? ( mw_step = 0.01; ) :
+      si >= 43 && si <= 45 ? ( mw_step = 0.5; ) :
+      si == 46 ? ( mw_step = 0.01; ) :
+      si >= 47 && si <= 50 ? ( mw_step = 10; ) :
+      si >= 51 && si <= 52 ? ( mw_step = 0.01; ) :
+      si == 53 ? ( mw_step = 0.1; ) :
+      si == 56 ? ( mw_step = 0.01; ) :
+      si == 57 ? ( mw_step = 1; ) :
+      si == 58 ? ( mw_step = 1; ) :
+      si >= 54 ? ( mw_step = 0.01; );
+
+      mouse_wheel < 0 ? mw_step = -mw_step;
+
+      si == 0  ? ( ckSubLow = max(0, min(5, ckSubLow + mw_step));         slider_automate(slider5); ) :
+      si == 1  ? ( ckSubMid = max(0, min(5, ckSubMid + mw_step));         slider_automate(slider6); ) :
+      si == 2  ? ( ckSubHigh = max(0, min(5, ckSubHigh + mw_step));       slider_automate(slider7); ) :
+      si == 3  ? ( ckDuck = max(-60, min(0, ckDuck + mw_step));           slider_automate(slider8); ) :
+      si == 4  ? ( ckThresh = max(-60, min(0, ckThresh + mw_step));       slider_automate(slider9); ) :
+      si == 5  ? ( ckAttack = max(0.1, min(50, ckAttack + mw_step));      slider_automate(slider10); ) :
+      si == 6  ? ( ckRelease = max(10, min(500, ckRelease + mw_step));    slider_automate(slider11); ) :
+      si == 7  ? ( ckKnee = max(0, min(20, ckKnee + mw_step));           slider_automate(slider12); ) :
+      si == 8  ? ( boostLow = max(0, min(12, boostLow + mw_step));       slider_automate(slider13); ) :
+      si == 9  ? ( boostLowFreq = max(100, min(800, boostLowFreq + mw_step)); slider_automate(slider14); ) :
+      si == 10 ? ( boostLowQ = max(0.3, min(3, boostLowQ + mw_step));    slider_automate(slider15); ) :
+      si == 11 ? ( boostHigh = max(0, min(18, boostHigh + mw_step));     slider_automate(slider16); ) :
+      si == 12 ? ( boostHighFreq = max(1000, min(5000, boostHighFreq + mw_step)); slider_automate(slider17); ) :
+      si == 13 ? ( boostHighQ = max(0.3, min(3, boostHighQ + mw_step));  slider_automate(slider18); ) :
+      si == 14 ? ( boostAttack = max(0.5, min(50, boostAttack + mw_step)); slider_automate(slider19); ) :
+      si == 15 ? ( boostRelease = max(10, min(500, boostRelease + mw_step)); slider_automate(slider20); ) :
+      si == 16 ? ( boostRejectThresh = max(-40, min(0, boostRejectThresh + mw_step)); slider_automate(slider21); ) :
+      si == 17 ? ( b1Attack = max(0, min(1, b1Attack + mw_step));         slider_automate(slider22); ) :
+      si == 18 ? ( b1Sustain = max(0, min(1, b1Sustain + mw_step));       slider_automate(slider23); ) :
+      si == 19 ? ( b1AtkStr = max(-1, min(1, b1AtkStr + mw_step));       slider_automate(slider24); ) :
+      si == 20 ? ( b1SusStr = max(-1, min(1, b1SusStr + mw_step));       slider_automate(slider25); ) :
+      si == 21 ? ( fb1AtkStr = max(-1, min(1, fb1AtkStr + mw_step));     slider_automate(slider26); ) :
+      si == 22 ? ( fb1SusStr = max(-1, min(1, fb1SusStr + mw_step));     slider_automate(slider27); ) :
+      si == 23 ? ( b1ExpThresh = max(-60, min(0, b1ExpThresh + mw_step)); slider_automate(slider40); ) :
+      si == 24 ? ( b1ExpRatio = max(1, min(20, b1ExpRatio + mw_step));   slider_automate(slider41); ) :
+      si == 25 ? ( b1ExpFloor = max(-80, min(-10, b1ExpFloor + mw_step)); slider_automate(slider42); ) :
+      si == 26 ? ( cmrLow = max(0, min(1, cmrLow + mw_step));           slider_automate(slider49); ) :
+      si == 27 ? ( b2Attack = max(0, min(1, b2Attack + mw_step));         slider_automate(slider28); ) :
+      si == 28 ? ( b2Sustain = max(0, min(1, b2Sustain + mw_step));       slider_automate(slider29); ) :
+      si == 29 ? ( b2AtkStr = max(-1, min(1, b2AtkStr + mw_step));       slider_automate(slider30); ) :
+      si == 30 ? ( b2SusStr = max(-1, min(1, b2SusStr + mw_step));       slider_automate(slider31); ) :
+      si == 31 ? ( fb2AtkStr = max(-1, min(1, fb2AtkStr + mw_step));     slider_automate(slider32); ) :
+      si == 32 ? ( fb2SusStr = max(-1, min(1, fb2SusStr + mw_step));     slider_automate(slider33); ) :
+      si == 33 ? ( b2ExpThresh = max(-60, min(0, b2ExpThresh + mw_step)); slider_automate(slider43); ) :
+      si == 34 ? ( b2ExpRatio = max(1, min(20, b2ExpRatio + mw_step));   slider_automate(slider44); ) :
+      si == 35 ? ( b2ExpFloor = max(-80, min(-10, b2ExpFloor + mw_step)); slider_automate(slider45); ) :
+      si == 36 ? ( cmrMid = max(0, min(1, cmrMid + mw_step));           slider_automate(slider50); ) :
+      si == 37 ? ( b3Attack = max(0, min(1, b3Attack + mw_step));         slider_automate(slider34); ) :
+      si == 38 ? ( b3Sustain = max(0, min(1, b3Sustain + mw_step));       slider_automate(slider35); ) :
+      si == 39 ? ( b3AtkStr = max(-1, min(1, b3AtkStr + mw_step));       slider_automate(slider36); ) :
+      si == 40 ? ( b3SusStr = max(-1, min(1, b3SusStr + mw_step));       slider_automate(slider37); ) :
+      si == 41 ? ( fb3AtkStr = max(-1, min(1, fb3AtkStr + mw_step));     slider_automate(slider38); ) :
+      si == 42 ? ( fb3SusStr = max(-1, min(1, fb3SusStr + mw_step));     slider_automate(slider39); ) :
+      si == 43 ? ( b3ExpThresh = max(-60, min(0, b3ExpThresh + mw_step)); slider_automate(slider46); ) :
+      si == 44 ? ( b3ExpRatio = max(1, min(20, b3ExpRatio + mw_step));   slider_automate(slider47); ) :
+      si == 45 ? ( b3ExpFloor = max(-80, min(-10, b3ExpFloor + mw_step)); slider_automate(slider48); ) :
+      si == 46 ? ( cmrHigh = max(0, min(1, cmrHigh + mw_step));         slider_automate(slider51); ) :
+      si == 47 ? ( lowCut = max(20, min(2000, lowCut + mw_step));         slider_automate(slider1); ) :
+      si == 48 ? ( highCut = max(1000, min(20000, highCut + mw_step));   slider_automate(slider2); ) :
+      si == 49 ? ( xover1 = max(20, min(8000, xover1 + mw_step));       slider_automate(slider3); ) :
+      si == 50 ? ( xover2 = max(100, min(20000, xover2 + mw_step));     slider_automate(slider4); ) :
+      si == 51 ? ( dirEmphasis = max(0, min(1, dirEmphasis + mw_step));  slider_automate(slider52); ) :
+      si == 52 ? ( b1SelfSup = max(0, min(1, b1SelfSup + mw_step));     slider_automate(slider53); ) :
+      si == 53 ? ( outGain = max(-20, min(20, outGain + mw_step));       slider_automate(slider54); ) :
+      si == 54 ? ( gainSmooth = max(0, min(1, gainSmooth + mw_step));    slider_automate(slider55); ) :
+      si == 55 ? ( mix = max(0, min(1, mix + mw_step));                  slider_automate(slider56); ) :
+      si == 56 ? ( lfeModDepth = max(0, min(1, lfeModDepth + mw_step)); slider_automate(slider57); ) :
+      si == 57 ? ( lfeAttack = max(1, min(500, lfeAttack + mw_step));   slider_automate(slider58); ) :
+      si == 58 ? ( lfeRelease = max(50, min(2000, lfeRelease + mw_step)); slider_automate(slider59); );
+
+      out_gain_lin = exp(outGain / DB_K);
+
+      (si >= 47 && si <= 50) ? (
+        xover1 = max(xover1, lowCut + 1);
+        xover2 = max(xover2, xover1 + 1);
+        highCut = max(highCut, xover2 + 1);
+        xover2 = min(xover2, highCut - 1);
+        xover1 = min(xover1, xover2 - 1);
+        lowCut = min(lowCut, xover1 - 1);
+        calc_biquad_lp(BIQUAD_COEFF,      lowCut);
+        calc_biquad_hp(BIQUAD_COEFF + 5,  lowCut);
+        calc_biquad_lp(BIQUAD_COEFF + 10, xover1);
+        calc_biquad_hp(BIQUAD_COEFF + 15, xover1);
+        calc_biquad_lp(BIQUAD_COEFF + 20, xover2);
+        calc_biquad_hp(BIQUAD_COEFF + 25, xover2);
+        calc_biquad_lp(BIQUAD_COEFF + 30, highCut);
+        calc_biquad_hp(BIQUAD_COEFF + 35, highCut);
+      );
+
+      (si >= 8 && si <= 13) ? (
+        boostLow > 0 ? calc_peaking_eq(BOOST_LOW_COEFF, boostLowFreq, boostLow, boostLowQ);
+        boostHigh > 0 ? calc_peaking_eq(BOOST_HI_COEFF, boostHighFreq, boostHigh, boostHighQ);
+      );
+
+      mw_handled = 1;
+    );
+    si += 1;
+  );
+  mouse_wheel = 0;
+);

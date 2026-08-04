@@ -1,0 +1,61 @@
+BO7 V5 - 16 Channel Configs
+
+This is a 16-channel profile. Pick ONE config file below and point a single
+E-APO 'Include:' line at it. Do NOT add a HeSuVi include for 16ch.
+The 16-channel endpoint does not expose Loudness Equalization, so
+there is no LEQ setting to make and no LEQ note in this folder.
+
+Full - The world untamed. Combat ducking off, footsteps lifted, full dynamics with nothing holding the peaks back.
+  (Self Gun Level)
+    Stock  BO7_V5_16ch_Full-StockGun.txt
+             Your gun untouched, exactly as the game mixes it.
+    Low    BO7_V5_16ch_Full-LoGun.txt
+             Your own gunfire tamed the hardest, so shots never bury a footstep. NOTE: Low cuts self gun but reflections from the environment can still be loud, not tunable.
+    Med    BO7_V5_16ch_Full-MedGun.txt
+             Your gun pulled back to sit behind the intel. The middle setting.
+    High   BO7_V5_16ch_Full-HiGun.txt
+             A light trim on your own gunfire. Keeps most of its punch.
+
+Capped - Same tune as Full with a soft ceiling that rounds off the loudest peaks. Use this if Full feels too harsh.
+  (Self Gun Level)
+    Stock  BO7_V5_16ch_Capped-StockGun.txt
+             Your gun untouched, exactly as the game mixes it.
+    Low    BO7_V5_16ch_Capped-LoGun.txt
+             Your own gunfire tamed the hardest, so shots never bury a footstep. NOTE: Low cuts self gun but reflections from the environment can still be loud, not tunable.
+    Med    BO7_V5_16ch_Capped-MedGun.txt
+             Your gun pulled back to sit behind the intel. The middle setting.
+    High   BO7_V5_16ch_Capped-HiGun.txt
+             A light trim on your own gunfire. Keeps most of its punch.
+
+Immersive - The easy listen. Guns tamed the deepest with the smoothest presence, made for long relaxed sessions.
+  (Self Gun Level)
+    Stock  BO7_V5_16ch_Immersive-StockGun.txt
+             Your gun untouched, exactly as the game mixes it.
+    Low    BO7_V5_16ch_Immersive-LoGun.txt
+             Your own gunfire tamed the hardest, so shots never bury a footstep. NOTE: Low cuts self gun but reflections from the environment can still be loud, not tunable.
+    Med    BO7_V5_16ch_Immersive-MedGun.txt
+             Your gun pulled back to sit behind the intel. The middle setting.
+    High   BO7_V5_16ch_Immersive-HiGun.txt
+             A light trim on your own gunfire. Keeps most of its punch.
+
+Balanced - Full's footstep lift with the combat control kept on. The split between Full and Competitive.
+  (Self Gun Level)
+    Stock  BO7_V5_16ch_Balanced-StockGun.txt
+             Your gun untouched, exactly as the game mixes it.
+    Low    BO7_V5_16ch_Balanced-LoGun.txt
+             Your own gunfire tamed the hardest, so shots never bury a footstep. NOTE: Low cuts self gun but reflections from the environment can still be loud, not tunable.
+    Med    BO7_V5_16ch_Balanced-MedGun.txt
+             Your gun pulled back to sit behind the intel. The middle setting.
+    High   BO7_V5_16ch_Balanced-HiGun.txt
+             A light trim on your own gunfire. Keeps most of its punch.
+
+Competitive - Maximum footstep detail and snap, with bright gunfire tamed the hardest.
+  (Self Gun Level)
+    Stock  BO7_V5_16ch_Competitive-StockGun.txt
+             Your gun untouched, exactly as the game mixes it.
+    Low    BO7_V5_16ch_Competitive-LoGun.txt
+             Your own gunfire tamed the hardest, so shots never bury a footstep. NOTE: Low cuts self gun but reflections from the environment can still be loud, not tunable.
+    Med    BO7_V5_16ch_Competitive-MedGun.txt
+             Your gun pulled back to sit behind the intel. The middle setting.
+    High   BO7_V5_16ch_Competitive-HiGun.txt
+             A light trim on your own gunfire. Keeps most of its punch.

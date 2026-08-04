@@ -1,0 +1,19 @@
+# Install-ArtTune.ps1 carries an Authenticode signature that covers the exact
+# file bytes, CRLF line endings included. Git must not normalize it: with
+# core.autocrlf the blob would be stored as LF, and anyone fetching the raw
+# file from GitHub would get a HashMismatch "file may have been tampered
+# with" warning. -text disables all conversion so the signed bytes round-trip.
+*.ps1 -text
+
+# Library configs and target curves are consumed byte-for-byte by Equalizer APO
+# and are hashed by the build; leave them alone too.
+library/** -text
+
+# Binaries
+*.dll binary
+*.exe binary
+*.wav binary
+*.png binary
+*.ico binary
+*.zip binary
+*.lnk binary

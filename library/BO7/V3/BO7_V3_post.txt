@@ -1,0 +1,10 @@
+### HESUVI: BO7_V3.lnk
+### STATUS: Updated 04/04/2026
+### NOTES: 
+#
+# ArtTuneKit Post-HeSuVi Config — DO NOT EDIT
+
+# @label: Spatial Enhancer
+VSTPlugin: Library "C:\Program Files\VSTPlugins\ReaPlugs\reajs.dll" ChunkData "QXJ0VHVuZUtpdC9hdGtfc3RlcmVvX3NwYXRpYWxfZW5oYW5jZXIuanNmeAAxMC4zMzMzMzMgOTUuMDAwMDAwIDAuMDAwMDAwIDE1MDAuMDAwMDAwIDEuMDAwMDAwIDAuMDAwMDAwIDEuMDAwMDAwIC0gLSAtIC0gLSAtIC0gLSAtIC0gLSAtIC0gLSAtIC0gLSAtIC0gLSAtIC0gLSAtIC0gLSAtIC0gLSAtIC0gLSAtIC0gLSAtIC0gLSAtIC0gLSAtIC0gLSAtIC0gLSAtIC0gLSAtIC0gLSAtIC0gLSAtIAAAAAAA"
+# @label: Limiter
+VSTPlugin: Library "C:\Program Files\VSTPlugins\ReaPlugs\reacomp-standalone.dll" Thresh 0.98854345 Ratio 0.1919192 Attack 0.0006 Release 0.01 Pre-comp 0 resvd 0 Lowpass 1 Hipass 0 SignIn 0 AudIn 0 Dry 3.1622776E-08 Wet 1 PreviewF 0 "RMS size" 0 Knee 0 AutoMkUp 0 AutoRel 0 ClsAttk 0 AntiAls 0.07692308
