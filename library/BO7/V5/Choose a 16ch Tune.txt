@@ -7,106 +7,106 @@ there is no LEQ setting to make and no LEQ note in this folder.
 
 Recommended starting file: BO7_V5_16ch_ClassicPlus-UltraLoGun.txt
 
-Classic+ [DEFAULT] [NEW] - Classic with more footstep lift. The surround and object ceilings are raised so distant steps come through louder, and the boost limiter is relaxed so close steps are no longer held back entirely.
+Classic+ [DEFAULT] - Classic with more footstep lift. The surround and object ceilings are raised so distant steps come through louder, and the boost limiter is relaxed so close steps are no longer held back entirely.
   (Self Gun Level)
-    Stock     BO7_V5_16ch_ClassicPlus-StockGun.txt
-              Your gun untouched, exactly as the game mixes it.
-    Low       BO7_V5_16ch_ClassicPlus-LoGun.txt
-              Your own gunfire tamed the hardest, so shots never bury a footstep. NOTE: Low cuts self gun but reflections from the environment can still be loud, not tunable.
-    Med       BO7_V5_16ch_ClassicPlus-MedGun.txt
-              Your gun pulled back to sit behind the intel. The middle setting.
-    High      BO7_V5_16ch_ClassicPlus-HiGun.txt
-              A light trim on your own gunfire. Keeps most of its punch.
-    Ultra Low BO7_V5_16ch_ClassicPlus-UltraLoGun.txt  (default)
-              Your gun pushed to the engine's limit, 6 dB deeper than Low. NOTE: the room reflection after a shot is not ducked at this tier, so with the gun this far down the ring-out can become the loudest thing left.
+    Ultra Low  BO7_V5_16ch_ClassicPlus-UltraLoGun.txt  (default)
+               Your gun pushed to the engine's limit, 6 dB deeper than Low. NOTE: the room reflection after a shot is not ducked at this tier, so with the gun this far down the ring-out can become the loudest thing left.
+    Low        BO7_V5_16ch_ClassicPlus-LoGun.txt
+               Your own gunfire tamed the hardest, so shots never bury a footstep. NOTE: Low cuts self gun but reflections from the environment can still be loud, not tunable.
+    Medium     BO7_V5_16ch_ClassicPlus-MedGun.txt
+               Your gun pulled back to sit behind the intel. The middle setting.
+    High       BO7_V5_16ch_ClassicPlus-HiGun.txt
+               A light trim on your own gunfire. Keeps most of its punch.
+    Extra High BO7_V5_16ch_ClassicPlus-ExtraHiGun.txt
+               Your gun untouched, exactly as the game mixes it.
 
-Classic [NEW] - Competitive's footstep detail and gunfire control with the leveller timing slowed the furthest. The closest thing in the family to the old Loudness Equalization feel, and the least audible processing.
+Classic - Competitive's footstep detail and gunfire control with the leveller timing slowed the furthest. The closest thing in the family to the old Loudness Equalization feel, and the least audible processing.
   (Self Gun Level)
-    Stock     BO7_V5_16ch_Classic-StockGun.txt
-              Your gun untouched, exactly as the game mixes it.
-    Low       BO7_V5_16ch_Classic-LoGun.txt
-              Your own gunfire tamed the hardest, so shots never bury a footstep. NOTE: Low cuts self gun but reflections from the environment can still be loud, not tunable.
-    Med       BO7_V5_16ch_Classic-MedGun.txt
-              Your gun pulled back to sit behind the intel. The middle setting.
-    High      BO7_V5_16ch_Classic-HiGun.txt
-              A light trim on your own gunfire. Keeps most of its punch.
-    Ultra Low BO7_V5_16ch_Classic-UltraLoGun.txt  (default)
-              Your gun pushed to the engine's limit, 6 dB deeper than Low. NOTE: the room reflection after a shot is NOT ducked at this tier, so with the gun this far down the ring-out can become the loudest thing left.
+    Ultra Low  BO7_V5_16ch_Classic-UltraLoGun.txt  (default)
+               Your gun pushed to the engine's limit, 6 dB deeper than Low. NOTE: the room reflection after a shot is NOT ducked at this tier, so with the gun this far down the ring-out can become the loudest thing left.
+    Low        BO7_V5_16ch_Classic-LoGun.txt
+               Your own gunfire tamed the hardest, so shots never bury a footstep. NOTE: Low cuts self gun but reflections from the environment can still be loud, not tunable.
+    Medium     BO7_V5_16ch_Classic-MedGun.txt
+               Your gun pulled back to sit behind the intel. The middle setting.
+    High       BO7_V5_16ch_Classic-HiGun.txt
+               A light trim on your own gunfire. Keeps most of its punch.
+    Extra High BO7_V5_16ch_Classic-ExtraHiGun.txt
+               Your gun untouched, exactly as the game mixes it.
 
-Open [NEW] - The least filtered option. Built on Balanced rather than Competitive, so mid-level sound comes up harder and less bright content is held back, with a higher ceiling on the footstep band. Slow leveller timing, so it stays smooth.
+Open - The least filtered option. Built on Balanced rather than Competitive, so mid-level sound comes up harder and less bright content is held back, with a higher ceiling on the footstep band. Slow leveller timing, so it stays smooth.
   (Self Gun Level)
-    Stock     BO7_V5_16ch_Open-StockGun.txt
-              Your gun untouched, exactly as the game mixes it.
-    Low       BO7_V5_16ch_Open-LoGun.txt
-              Your own gunfire tamed the hardest, so shots never bury a footstep. NOTE: Low cuts self gun but reflections from the environment can still be loud, not tunable.
-    Med       BO7_V5_16ch_Open-MedGun.txt
-              Your gun pulled back to sit behind the intel. The middle setting.
-    High      BO7_V5_16ch_Open-HiGun.txt
-              A light trim on your own gunfire. Keeps most of its punch.
-    Ultra Low BO7_V5_16ch_Open-UltraLoGun.txt  (default)
-              Your gun pushed to the engine's limit, 6 dB deeper than Low. NOTE: the room reflection after a shot is NOT ducked at this tier, so with the gun this far down the ring-out can become the loudest thing left.
+    Ultra Low  BO7_V5_16ch_Open-UltraLoGun.txt  (default)
+               Your gun pushed to the engine's limit, 6 dB deeper than Low. NOTE: the room reflection after a shot is NOT ducked at this tier, so with the gun this far down the ring-out can become the loudest thing left.
+    Low        BO7_V5_16ch_Open-LoGun.txt
+               Your own gunfire tamed the hardest, so shots never bury a footstep. NOTE: Low cuts self gun but reflections from the environment can still be loud, not tunable.
+    Medium     BO7_V5_16ch_Open-MedGun.txt
+               Your gun pulled back to sit behind the intel. The middle setting.
+    High       BO7_V5_16ch_Open-HiGun.txt
+               A light trim on your own gunfire. Keeps most of its punch.
+    Extra High BO7_V5_16ch_Open-ExtraHiGun.txt
+               Your gun untouched, exactly as the game mixes it.
 
 Full - The world untamed. Combat ducking off, footsteps lifted, full dynamics with nothing holding the peaks back.
   (Self Gun Level)
-    Stock     BO7_V5_16ch_Full-StockGun.txt
-              Your gun untouched, exactly as the game mixes it.
-    Low       BO7_V5_16ch_Full-LoGun.txt
-              Your own gunfire tamed the hardest, so shots never bury a footstep. NOTE: Low cuts self gun but reflections from the environment can still be loud, not tunable.
-    Med       BO7_V5_16ch_Full-MedGun.txt
-              Your gun pulled back to sit behind the intel. The middle setting.
-    High      BO7_V5_16ch_Full-HiGun.txt
-              A light trim on your own gunfire. Keeps most of its punch.
-    Ultra Low BO7_V5_16ch_Full-UltraLoGun.txt  (default)
-              Your gun pushed to the engine's limit, 6 dB deeper than Low. NOTE: the room reflection after a shot is not ducked at this tier, so with the gun this far down the ring-out can become the loudest thing left.
+    Ultra Low  BO7_V5_16ch_Full-UltraLoGun.txt  (default)
+               Your gun pushed to the engine's limit, 6 dB deeper than Low. NOTE: the room reflection after a shot is not ducked at this tier, so with the gun this far down the ring-out can become the loudest thing left.
+    Low        BO7_V5_16ch_Full-LoGun.txt
+               Your own gunfire tamed the hardest, so shots never bury a footstep. NOTE: Low cuts self gun but reflections from the environment can still be loud, not tunable.
+    Medium     BO7_V5_16ch_Full-MedGun.txt
+               Your gun pulled back to sit behind the intel. The middle setting.
+    High       BO7_V5_16ch_Full-HiGun.txt
+               A light trim on your own gunfire. Keeps most of its punch.
+    Extra High BO7_V5_16ch_Full-ExtraHiGun.txt
+               Your gun untouched, exactly as the game mixes it.
 
 Competitive [EXPERIMENTAL] - Maximum footstep detail and snap, with bright gunfire tamed the hardest.
   (Self Gun Level)
-    Stock     BO7_V5_16ch_Competitive-StockGun.txt
-              Your gun untouched, exactly as the game mixes it.
-    Low       BO7_V5_16ch_Competitive-LoGun.txt
-              Your own gunfire tamed the hardest, so shots never bury a footstep. NOTE: Low cuts self gun but reflections from the environment can still be loud, not tunable.
-    Med       BO7_V5_16ch_Competitive-MedGun.txt
-              Your gun pulled back to sit behind the intel. The middle setting.
-    High      BO7_V5_16ch_Competitive-HiGun.txt
-              A light trim on your own gunfire. Keeps most of its punch.
-    Ultra Low BO7_V5_16ch_Competitive-UltraLoGun.txt  (default)
-              Your gun pushed to the engine's limit, 6 dB deeper than Low. NOTE: the room reflection after a shot is not ducked at this tier, so with the gun this far down the ring-out can become the loudest thing left.
+    Ultra Low  BO7_V5_16ch_Competitive-UltraLoGun.txt  (default)
+               Your gun pushed to the engine's limit, 6 dB deeper than Low. NOTE: the room reflection after a shot is not ducked at this tier, so with the gun this far down the ring-out can become the loudest thing left.
+    Low        BO7_V5_16ch_Competitive-LoGun.txt
+               Your own gunfire tamed the hardest, so shots never bury a footstep. NOTE: Low cuts self gun but reflections from the environment can still be loud, not tunable.
+    Medium     BO7_V5_16ch_Competitive-MedGun.txt
+               Your gun pulled back to sit behind the intel. The middle setting.
+    High       BO7_V5_16ch_Competitive-HiGun.txt
+               A light trim on your own gunfire. Keeps most of its punch.
+    Extra High BO7_V5_16ch_Competitive-ExtraHiGun.txt
+               Your gun untouched, exactly as the game mixes it.
 
 Capped [DEPRECATED] - An older V5 tune, kept for anyone already using it. A hard output clamp on top of the V5 world control, with combat ducking left on. The newer styles hold peaks in check without clamping them.
   (Self Gun Level)
-    Stock     BO7_V5_16ch_Capped-StockGun.txt
-              Your gun untouched, exactly as the game mixes it.
-    Low       BO7_V5_16ch_Capped-LoGun.txt
-              Your own gunfire tamed the hardest, so shots never bury a footstep. NOTE: Low cuts self gun but reflections from the environment can still be loud, not tunable.
-    Med       BO7_V5_16ch_Capped-MedGun.txt
-              Your gun pulled back to sit behind the intel. The middle setting.
-    High      BO7_V5_16ch_Capped-HiGun.txt
-              A light trim on your own gunfire. Keeps most of its punch.
-    Ultra Low BO7_V5_16ch_Capped-UltraLoGun.txt  (default)
-              Your gun pushed to the engine's limit, 6 dB deeper than Low. NOTE: the room reflection after a shot is not ducked at this tier, so with the gun this far down the ring-out can become the loudest thing left.
+    Ultra Low  BO7_V5_16ch_Capped-UltraLoGun.txt  (default)
+               Your gun pushed to the engine's limit, 6 dB deeper than Low. NOTE: the room reflection after a shot is not ducked at this tier, so with the gun this far down the ring-out can become the loudest thing left.
+    Low        BO7_V5_16ch_Capped-LoGun.txt
+               Your own gunfire tamed the hardest, so shots never bury a footstep. NOTE: Low cuts self gun but reflections from the environment can still be loud, not tunable.
+    Medium     BO7_V5_16ch_Capped-MedGun.txt
+               Your gun pulled back to sit behind the intel. The middle setting.
+    High       BO7_V5_16ch_Capped-HiGun.txt
+               A light trim on your own gunfire. Keeps most of its punch.
+    Extra High BO7_V5_16ch_Capped-ExtraHiGun.txt
+               Your gun untouched, exactly as the game mixes it.
 
 Immersive [DEPRECATED] - An older V5 tune, kept for anyone already using it. The deepest gun taming of the original lineup, which costs it detail. Classic covers the same ground with far less processing.
   (Self Gun Level)
-    Stock     BO7_V5_16ch_Immersive-StockGun.txt
-              Your gun untouched, exactly as the game mixes it.
-    Low       BO7_V5_16ch_Immersive-LoGun.txt
-              Your own gunfire tamed the hardest, so shots never bury a footstep. NOTE: Low cuts self gun but reflections from the environment can still be loud, not tunable.
-    Med       BO7_V5_16ch_Immersive-MedGun.txt
-              Your gun pulled back to sit behind the intel. The middle setting.
-    High      BO7_V5_16ch_Immersive-HiGun.txt
-              A light trim on your own gunfire. Keeps most of its punch.
-    Ultra Low BO7_V5_16ch_Immersive-UltraLoGun.txt  (default)
-              Your gun pushed to the engine's limit, 6 dB deeper than Low. NOTE: the room reflection after a shot is not ducked at this tier, so with the gun this far down the ring-out can become the loudest thing left.
+    Ultra Low  BO7_V5_16ch_Immersive-UltraLoGun.txt  (default)
+               Your gun pushed to the engine's limit, 6 dB deeper than Low. NOTE: the room reflection after a shot is not ducked at this tier, so with the gun this far down the ring-out can become the loudest thing left.
+    Low        BO7_V5_16ch_Immersive-LoGun.txt
+               Your own gunfire tamed the hardest, so shots never bury a footstep. NOTE: Low cuts self gun but reflections from the environment can still be loud, not tunable.
+    Medium     BO7_V5_16ch_Immersive-MedGun.txt
+               Your gun pulled back to sit behind the intel. The middle setting.
+    High       BO7_V5_16ch_Immersive-HiGun.txt
+               A light trim on your own gunfire. Keeps most of its punch.
+    Extra High BO7_V5_16ch_Immersive-ExtraHiGun.txt
+               Your gun untouched, exactly as the game mixes it.
 
 Balanced [DEPRECATED] - An older V5 tune, kept for anyone already using it. Open is built directly on it and replaces it.
   (Self Gun Level)
-    Stock     BO7_V5_16ch_Balanced-StockGun.txt
-              Your gun untouched, exactly as the game mixes it.
-    Low       BO7_V5_16ch_Balanced-LoGun.txt
-              Your own gunfire tamed the hardest, so shots never bury a footstep. NOTE: Low cuts self gun but reflections from the environment can still be loud, not tunable.
-    Med       BO7_V5_16ch_Balanced-MedGun.txt
-              Your gun pulled back to sit behind the intel. The middle setting.
-    High      BO7_V5_16ch_Balanced-HiGun.txt
-              A light trim on your own gunfire. Keeps most of its punch.
-    Ultra Low BO7_V5_16ch_Balanced-UltraLoGun.txt  (default)
-              Your gun pushed to the engine's limit, 6 dB deeper than Low. NOTE: the room reflection after a shot is not ducked at this tier, so with the gun this far down the ring-out can become the loudest thing left.
+    Ultra Low  BO7_V5_16ch_Balanced-UltraLoGun.txt  (default)
+               Your gun pushed to the engine's limit, 6 dB deeper than Low. NOTE: the room reflection after a shot is not ducked at this tier, so with the gun this far down the ring-out can become the loudest thing left.
+    Low        BO7_V5_16ch_Balanced-LoGun.txt
+               Your own gunfire tamed the hardest, so shots never bury a footstep. NOTE: Low cuts self gun but reflections from the environment can still be loud, not tunable.
+    Medium     BO7_V5_16ch_Balanced-MedGun.txt
+               Your gun pulled back to sit behind the intel. The middle setting.
+    High       BO7_V5_16ch_Balanced-HiGun.txt
+               A light trim on your own gunfire. Keeps most of its punch.
+    Extra High BO7_V5_16ch_Balanced-ExtraHiGun.txt
+               Your gun untouched, exactly as the game mixes it.

@@ -1,0 +1,97 @@
+MW4 V1 - 16 Channel Configs
+
+This is a 16-channel profile. Pick ONE config file below and point a single
+E-APO 'Include:' line at it. Do NOT add a HeSuVi include for 16ch.
+The 16-channel endpoint does not expose Loudness Equalization, so
+there is no LEQ setting to make and no LEQ note in this folder.
+
+Recommended starting file: MW4_V1_16ch_TheaterClear-UltraLoGun_HRIR-KU100.txt
+
+Built for: Warzone, DMZ.
+Multiplayer (limited): The tune works in MP, but the Ninja perk and constant chaos make it inconsistent.
+
+HRIR Set - every config below comes once per head. Pick the head by file name:
+    D1 KU100 _HRIR-KU100  (default)
+             The default head, and where new profiles start.
+    D2 KEMAR _HRIR-KEMAR
+             The head these tunes were tuned on. Try it if sounds do not place right for you, front against back or high against low.
+The file names below are the D1 KU100 versions. For another head, swap
+_HRIR-KU100 in the file name for that head's suffix.
+
+Classic LE - The original Loudness Equalization feel, rebuilt as our own leveller, with one change: when you fire, only the front and your gun's copies come down, so the world stays present.
+  (Self Gun Level)
+    Ultra Low  MW4_V1_16ch_ClassicLE-UltraLoGun_HRIR-KU100.txt  (default)
+               Your gun pushed the furthest: the front ducked to the engine's limit and its copies on the object and top channels cut 10 dB. NOTE: a long spray can hold those channels down until you let go.
+    Low        MW4_V1_16ch_ClassicLE-LoGun_HRIR-KU100.txt
+               Your own gunfire tamed hard, including its copies on the object and top channels.
+    Medium     MW4_V1_16ch_ClassicLE-MedGun_HRIR-KU100.txt
+               Your gun pulled back to sit behind the intel: a light front duck, its echo cut and most of its boom. The middle setting.
+    High       MW4_V1_16ch_ClassicLE-HiGun_HRIR-KU100.txt
+               A light touch: a small front duck while you fire, with your gun's echo and a little of its boom cut in the surrounds.
+    Extra High MW4_V1_16ch_ClassicLE-ExtraHiGun_HRIR-KU100.txt
+               Your gun as close to its stock level as the tune gets: no gun duck, and its boom is not cut in the surrounds (explosions keep more of theirs too). The leveller still evens out loud fire.
+
+Classic LE Raw - Classic LE with nothing working on the world: the wash and reflection gates are off, so room tails, explosions and your own shot's echo come through as the game mixed them.
+  (Self Gun Level)
+    Ultra Low  MW4_V1_16ch_ClassicLERaw-UltraLoGun_HRIR-KU100.txt  (default)
+               Your gun pushed the furthest: the front ducked to the engine's limit and its copies on the object and top channels cut 10 dB. NOTE: a long spray can hold those channels down until you let go.
+    Low        MW4_V1_16ch_ClassicLERaw-LoGun_HRIR-KU100.txt
+               Your own gunfire tamed hard, including its copies on the object and top channels.
+    Medium     MW4_V1_16ch_ClassicLERaw-MedGun_HRIR-KU100.txt
+               Your gun pulled back firmly to sit behind the intel: a strong front duck while you fire and a little off its copies on the object and top channels. The middle setting.
+    High       MW4_V1_16ch_ClassicLERaw-HiGun_HRIR-KU100.txt
+               Your gun eased back: a moderate front duck while you fire, about what Classic LE's Medium does, and a light cut on its copies on the object and top channels.
+    Extra High MW4_V1_16ch_ClassicLERaw-ExtraHiGun_HRIR-KU100.txt
+               No extra gun duck. The leveller still evens out your gunfire the way Loudness Equalization did, and the world stays up while you fire.
+
+Classic LE Raw+ - Classic LE Raw with a real Self Gun Level ladder: the world stays as the game mixed it, but from High down the echo of your own shots is cut along with your gun.
+  (Self Gun Level)
+    Ultra Low  MW4_V1_16ch_ClassicLERawPlus-UltraLoGun_HRIR-KU100.txt  (default)
+               Your gun pushed the furthest: the front ducked to the engine's limit and its copies on the object and top channels cut 10 dB. NOTE: a long spray can hold those channels down until you let go.
+    Low        MW4_V1_16ch_ClassicLERawPlus-LoGun_HRIR-KU100.txt
+               Your own gunfire and its echo tamed hard, including its copies on the object and top channels.
+    Medium     MW4_V1_16ch_ClassicLERawPlus-MedGun_HRIR-KU100.txt
+               Your gun pulled back to sit behind the intel: a light front duck and your own gun's echo cut. The middle setting.
+    High       MW4_V1_16ch_ClassicLERawPlus-HiGun_HRIR-KU100.txt
+               A light touch: a small front duck while you fire and a light cut on your own gun's echo.
+    Extra High MW4_V1_16ch_ClassicLERawPlus-ExtraHiGun_HRIR-KU100.txt
+               No gun duck, and your gun's echo comes through as the game mixed it, the same as Classic LE Raw.
+
+Classic LE+ - Classic LE with footsteps pushed harder: every step's attack stands out about 2 to 3 dB more against the room. Steps stay as loud as in Classic LE while the room, your own steps and your gun sit about 3 dB lower. Other sharp sounds can jump out a little more too.
+  (Self Gun Level)
+    Ultra Low  MW4_V1_16ch_ClassicLEPlus-UltraLoGun_HRIR-KU100.txt  (default)
+               Your gun pushed the furthest: the front ducked to the engine's limit and its copies on the object and top channels cut 10 dB. NOTE: a long spray can hold those channels down until you let go.
+    Low        MW4_V1_16ch_ClassicLEPlus-LoGun_HRIR-KU100.txt
+               Your own gunfire tamed hard, including its copies on the object and top channels.
+    Medium     MW4_V1_16ch_ClassicLEPlus-MedGun_HRIR-KU100.txt
+               Your gun pulled back to sit behind the intel: a light front duck, its echo cut and most of its boom. The middle setting.
+    High       MW4_V1_16ch_ClassicLEPlus-HiGun_HRIR-KU100.txt
+               A light touch: a small front duck while you fire, with your gun's echo and a little of its boom cut in the surrounds.
+    Extra High MW4_V1_16ch_ClassicLEPlus-ExtraHiGun_HRIR-KU100.txt
+               Your gun as close to its stock level as the tune gets: no gun duck, and its boom is not cut in the surrounds (explosions keep more of theirs too). The leveller still evens out loud fire.
+
+Theater Clear [DEFAULT] [NEW] - The game's own mix with footsteps brought forward. The world is left well below where Loudness Equalization would lift it, so quiet moments stay quiet and far sounds stay far. The deep bass stays at the game's level and the sub channel is left out, so steps sit in a cleaner band. The footstep push is smoothed: it lets go of each step gently, so it stays calmer around gunfire and explosions.
+  (Self Gun Level)
+    Ultra Low  MW4_V1_16ch_TheaterClear-UltraLoGun_HRIR-KU100.txt  (default)
+               The most this style takes off your own gun, about half of what Classic LE's Ultra Low does: a moderate front duck, its echo cut and its copies on the object and top channels turned down a little. Light enough that a long spray never pins the front.
+    Low        MW4_V1_16ch_TheaterClear-LoGun_HRIR-KU100.txt
+               Your gun clearly pulled back: a light front duck, its echo cut and a little off its copies on the object and top channels.
+    Medium     MW4_V1_16ch_TheaterClear-MedGun_HRIR-KU100.txt
+               Your gun eased back: a light front duck while you fire and its echo cut. The middle setting.
+    High       MW4_V1_16ch_TheaterClear-HiGun_HRIR-KU100.txt
+               Just a touch: a small front duck while you fire and a light cut on your own gun's echo.
+    Extra High MW4_V1_16ch_TheaterClear-ExtraHiGun_HRIR-KU100.txt
+               Your gun as the game mixed it: no gun duck and nothing cut. The leveller still evens out loud fire.
+
+Theater Clear+ [NEW] - Theater Clear with the footstep push at its sharpest: every step stands about 3 to 4 dB further out of the room, with a fast, hard edge. The room and your own gun sit about 2 dB lower. Other sharp sounds jump out too, and rapid gunfire can flutter.
+  (Self Gun Level)
+    Ultra Low  MW4_V1_16ch_TheaterClearPlus-UltraLoGun_HRIR-KU100.txt  (default)
+               The most this style takes off your own gun, about half of what Classic LE's Ultra Low does: a moderate front duck, its echo cut and its copies on the object and top channels turned down a little. Light enough that a long spray never pins the front.
+    Low        MW4_V1_16ch_TheaterClearPlus-LoGun_HRIR-KU100.txt
+               Your gun clearly pulled back: a light front duck, its echo cut and a little off its copies on the object and top channels.
+    Medium     MW4_V1_16ch_TheaterClearPlus-MedGun_HRIR-KU100.txt
+               Your gun eased back: a light front duck while you fire and its echo cut. The middle setting.
+    High       MW4_V1_16ch_TheaterClearPlus-HiGun_HRIR-KU100.txt
+               Just a touch: a small front duck while you fire and a light cut on your own gun's echo.
+    Extra High MW4_V1_16ch_TheaterClearPlus-ExtraHiGun_HRIR-KU100.txt
+               Your gun as the game mixed it: no gun duck and nothing cut. The leveller still evens out loud fire.

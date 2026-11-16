@@ -1,12 +1,25 @@
 # 🎮 Call of Duty: In-Game Audio Settings
 
-> Applies to **Black Ops 7**, **Black Ops 6**, and **Warzone**
+> Applies to **MW4**, **Black Ops 7**, **Black Ops 6**, and **Warzone**
 >
 > These settings are **required** for the audio processing chain to work correctly.
 
 ---
 
-## Audio Tab
+## Audio Tab (MW4)
+
+| Setting | Value | |
+|---|---|---|
+| Master Volume | **100** | |
+| Effects Volume | **100** | |
+| Dialog Volume | **100** | Flexible |
+| Game Sound Device | **Art Tune +** | |
+| Speaker Output | **Windows Default** | ⚠️ REQUIRED |
+| Audio Mix | **Headphones** | Recommended |
+| Enhanced Headphone Mode | **OFF** | |
+| Asymmetrical Hearing Compensation | **OFF** | |
+
+## Audio Tab (Black Ops 7, Black Ops 6, Warzone)
 
 | Setting | Value | |
 |---|---|---|
@@ -26,12 +39,14 @@
 
 | Your tune | Game Sound Device |
 |---|---|
+| MW4 V1 | **Art Tune +** |
 | BO7 V0, V3, V4 (and every earlier version) | **Art Tune** |
 | BO7 V5 | **Art Tune +** |
 | Black Ops 6, Warzone on a pre-V5 tune | **Art Tune** |
 | Warzone on a BO7 V5 tune | **Art Tune +** |
 
-If you switch between V0-V4 and V5, change the in-game device to match.
+If you switch between an **Art Tune** tune (V0-V4) and an **Art Tune +** tune (BO7 V5, MW4),
+change the in-game device to match.
 
 Black Ops 6 has no Enhanced Headphone Mode or Asymmetrical Hearing Compensation setting.
 Everything else on this page applies to it unchanged.
@@ -59,7 +74,7 @@ Everything else on this page applies to it unchanged.
   starves it and you lose detail the tune is meant to bring out.
 - **Voice on your normal hardware device** keeps comms out of the processing chain so voices
   sound natural.
-- **Audio Mix** is personal preference, but start with Headphones Bass Cut. It's the best
-  baseline for competitive play.
+- **Audio Mix** is personal preference. For Black Ops start with Headphones Bass Cut, the
+  best baseline for competitive play. For MW4 start with Headphones.
 - **Music / Menu Music at 0** keeps the channel clean for competitive play. No music masking
   footsteps or cues.

@@ -1,3 +1,49 @@
+## 2026.11-MW4
+
+- MW4 V1 added: a 16-channel tune on the Art Tune + endpoint, built for
+  Warzone and DMZ. It works in multiplayer too, but the Ninja perk and the
+  constant chaos there make it less consistent.
+- New engine: ATK Spatial Engine Charlie 1.1.0, included in vst/ and signed
+  by ArtIsWar, LLC. It takes what we learned tuning BO7 V5 and reworks it
+  for MW4, with our own leveller in place of Windows Loudness Equalization.
+  When you fire, the world no longer drops out: only the front, where your
+  gun sits, comes down with your shots, so enemy footsteps and everything
+  around you stay present. BO7 and every other game stay on the engine they
+  already use. Proprietary, binary-only. See vst/LICENSE.
+- Theater Clear and Theater Clear+: the game's own mix with footsteps
+  brought forward. Everything else is left as the game mixed it, so quiet
+  moments stay quiet and far sounds stay far, and the deep bass is held back
+  so footsteps sit in a cleaner space. Theater Clear pushes footsteps
+  smoothly and lets go of each step gently. Theater Clear+ is the sharper
+  version: footsteps are pushed about 3 to 4 dB harder, with a fast, hard
+  edge. Other sharp sounds jump out too, and rapid gunfire can flutter.
+- Classic LE, Classic LE+, Classic LE Raw and Classic LE Raw+: the Loudness
+  Equalization feel you know, rebuilt and cleaner. Classic LE+ pushes
+  footsteps harder. Raw leaves the world as the game mixed it. Raw+ is Raw
+  with Self Gun Levels that each make a real difference.
+- Five Self Gun Levels on every MW4 tuning style, from your gun quietest to
+  loudest: Ultra Low, Low, Medium, High, Extra High.
+- Two HRIR heads. Every MW4 config comes as a _HRIR-KU100 file and a
+  _HRIR-KEMAR file. D1 KU100 is the default. D2 KEMAR is the head these
+  tunes were tuned on: try it if sounds do not place right for you.
+- MW4 ships 60 configs: six tuning styles at five Self Gun Levels, each for
+  two heads. Recommended starting file:
+  MW4_V1_16ch_TheaterClear-UltraLoGun_HRIR-KU100.txt.
+- MW4 has its own target curve, MW4_Target_V1.txt. Generate a separate
+  squig.link EQ for it.
+- BO7 V5: Stock is now called Extra High. It sounds exactly the same, but
+  the eight -StockGun.txt files are now named -ExtraHiGun.txt. If your
+  config.txt points at a StockGun file, change the ending to
+  -ExtraHiGun.txt.
+- BO7 V5: Self Gun Levels are now listed from quietest to loudest, and
+  "Med" reads "Medium". Nothing else about V5 changed, and its target curve
+  is the same, so your existing V5 squig.link EQ still applies.
+- New: TUNING_NOTES.md, one page describing every tuning style, Self Gun
+  Level and HRIR head in the library, with the file to use for each.
+- COD_SETTINGS.md now covers MW4.
+- New headphone measurement: the Tipsy TS12.
+- All other games and versions are unchanged.
+
 ## 2026.09-V5Styles
 
 - BO7 V5: three new tuning styles, Classic, Classic+ and Open. What they
